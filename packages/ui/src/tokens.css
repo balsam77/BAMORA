@@ -1,0 +1,44 @@
+:root {
+  /* BAMORA brand — black, gold, premium neutrals */
+  --bamora-black: #000000;
+  --bamora-jet: #090909;
+  --bamora-charcoal: #141414;
+  --bamora-onyx: #1e1e1e;
+  --bamora-white: #ffffff;
+  --bamora-soft-white: #f3f1ec;
+  --bamora-gold: #c9a962;
+  --bamora-gold-light: #e8d5a3;
+  --bamora-gold-dark: #a68b4b;
+  --bamora-gold-glow: rgba(201, 169, 98, 0.18);
+
+  /* Typography */
+  --bamora-font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --bamora-font-display: Georgia, "Times New Roman", serif;
+  --bamora-font-mono: "Courier New", Courier, monospace;
+
+  /* Motion — elegant and luxurious */
+  --bamora-ease: cubic-bezier(0.34, 0.18, 0.24, 1);
+  --bamora-duration-fast: 320ms;
+  --bamora-duration-normal: 540ms;
+  --bamora-duration-slow: 840ms;
+  --bamora-duration-long: 1200ms;
+
+  /* Spacing */
+  --bamora-space-xxs: 0.35rem;
+  --bamora-space-xs: 0.75rem;
+  --bamora-space-sm: 1.25rem;
+  --bamora-space-md: 1.75rem;
+  --bamora-space-lg: 2.75rem;
+  --bamora-space-xl: 4.5rem;
+  --bamora-space-xxl: 6rem;
+
+  /* Shape */
+  --bamora-radius-sm: 6px;
+  --bamora-radius-md: 14px;
+  --bamora-radius-lg: 24px;
+  --bamora-radius-xl: 32px;
+
+  /* Elevation */
+  --bamora-shadow-soft: 0 18px 80px rgba(0, 0, 0, 0.24);
+  --bamora-shadow-card: 0 24px 90px rgba(0, 0, 0, 0.32);
+}

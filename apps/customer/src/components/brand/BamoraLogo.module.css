@@ -1,0 +1,109 @@
+.logo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.05em;
+  color: var(--bamora-gold);
+  user-select: none;
+}
+
+.mark {
+  font-family: var(--bamora-font-display);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.wordmark {
+  font-family: var(--bamora-font-sans);
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+}
+
+.sm .mark {
+  font-size: 1.5rem;
+}
+
+.sm .wordmark {
+  font-size: 0.95rem;
+}
+
+.md .mark {
+  font-size: 2.75rem;
+}
+
+.md .wordmark {
+  font-size: 1.35rem;
+}
+
+.lg .mark {
+  font-size: 4rem;
+}
+
+.lg .wordmark {
+  font-size: 2rem;
+}
+
+.animated {
+  animation: logoReveal 2.4s var(--bamora-ease) forwards;
+}
+
+.animated::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(
+    circle at center,
+    rgb(201 169 98 / 0.18),
+    transparent 65%
+  );
+  opacity: 0;
+  animation: goldGlow 2.4s var(--bamora-ease) forwards;
+  pointer-events: none;
+}
+
+.logo.animated {
+  position: relative;
+}
+
+@keyframes logoReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: blur(6px);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes goldGlow {
+  0%,
+  20% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated {
+    animation: none;
+    opacity: 1;
+  }
+
+  .animated::after {
+    animation: none;
+    opacity: 0.2;
+  }
+}

@@ -1,0 +1,1090 @@
+.headerBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--bamora-space-md);
+  padding-bottom: var(--bamora-space-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.brandTag {
+  margin: 0.25rem 0 0;
+  color: var(--bamora-gold-light);
+  font-size: 0.9rem;
+}
+
+.languageSelector {
+  position: relative;
+}
+
+.languageMenu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  min-width: 11rem;
+  padding: 0.35rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(201, 169, 98, 0.35);
+  background: rgba(10, 10, 10, 0.98);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  display: grid;
+  gap: 0.2rem;
+  z-index: 40;
+}
+
+.languageMenuItem,
+.languageMenuItemActive {
+  border: none;
+  border-radius: 0.6rem;
+  min-height: 2.2rem;
+  padding: 0 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  color: var(--bamora-white);
+}
+
+.languageMenuItemActive {
+  background: rgba(201, 169, 98, 0.22);
+  color: var(--bamora-gold);
+}
+
+.container {
+  display: grid;
+  gap: var(--bamora-space-lg);
+}
+
+.screen {
+  display: grid;
+  gap: var(--bamora-space-xl);
+}
+
+.heroCard,
+.introPanel {
+  display: grid;
+  gap: var(--bamora-space-lg);
+  padding: var(--bamora-space-xl);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  box-shadow: var(--bamora-shadow-soft);
+}
+
+.heroCard h1,
+.introPanel h2 {
+  margin: 0;
+  font-family: var(--bamora-font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--bamora-white);
+}
+
+.heroCard p,
+.introPanel p {
+  margin: 0;
+  color: var(--bamora-soft-white);
+  opacity: 0.92;
+  line-height: 1.8;
+}
+
+.sectionTag {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bamora-gold-light);
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--bamora-space-md);
+}
+
+.sectionLabel {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bamora-gold-light);
+}
+
+.discountHero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--bamora-space-lg);
+  padding: var(--bamora-space-xl);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
+.heroDetails {
+  display: grid;
+  gap: 1rem;
+  align-items: center;
+  justify-items: center;
+}
+
+.discountBadge {
+  display: inline-flex;
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  background: rgba(201, 169, 98, 0.18);
+  color: var(--bamora-gold);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  font-family: var(--bamora-font-display);
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  color: var(--bamora-white);
+}
+
+.sectionHint,
+.sectionSubtext {
+  color: var(--bamora-soft-white);
+  opacity: 0.84;
+  font-size: 0.95rem;
+}
+
+.tileGrid,
+.shopGrid,
+.productGrid,
+.offerGrid,
+.profileGrid {
+  display: grid;
+  gap: var(--bamora-space-md);
+}
+
+.filtersPanel {
+  display: grid;
+  gap: var(--bamora-space-lg);
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.filterRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--bamora-space-md);
+}
+
+.filterInput {
+  width: 100%;
+  padding: 1rem 1.15rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+  outline: none;
+}
+
+.filterSubmit,
+.filterChip,
+.sizeButton,
+.primaryButton {
+  padding: 0.95rem 1.25rem;
+  border-radius: 1rem;
+  border: none;
+  background: var(--bamora-gold);
+  color: var(--bamora-black);
+  cursor: pointer;
+}
+
+.chipRow,
+.sizeRow,
+.colorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.filterChip {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--bamora-white);
+}
+
+.filterGrid {
+  display: grid;
+  gap: var(--bamora-space-md);
+}
+
+.filterBox {
+  display: grid;
+  gap: 0.75rem;
+  padding: var(--bamora-space-md);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.rangeRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--bamora-space-md);
+  color: var(--bamora-soft-white);
+  font-size: 0.95rem;
+}
+
+.rangeSlider {
+  width: 100%;
+  accent-color: var(--bamora-gold);
+}
+
+.sizeButton {
+  min-width: 3rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+}
+
+.colorSwatch {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.filterFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--bamora-space-md);
+  flex-wrap: wrap;
+  padding-top: var(--bamora-space-sm);
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--bamora-space-md);
+  margin-bottom: var(--bamora-space-lg);
+}
+
+.productDetailCard {
+  display: grid;
+  gap: var(--bamora-space-lg);
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.productPreview {
+  min-height: 18rem;
+  border-radius: var(--bamora-radius-xl);
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  place-items: center;
+  color: var(--bamora-soft-white);
+}
+
+.productDetailInfo {
+  display: grid;
+  gap: var(--bamora-space-lg);
+}
+
+.optionGroup {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sizeButtonActive,
+.colorSwatchActive {
+  outline: 2px solid var(--bamora-gold);
+  box-shadow: 0 0 0 1px rgba(201, 169, 98, 0.35);
+}
+
+.productDetailActions {
+  display: flex;
+  gap: var(--bamora-space-md);
+  flex-wrap: wrap;
+}
+
+.tileGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.shopGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.productGrid,
+.offerGrid {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.profileGrid {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.categoryTile,
+.productCard,
+.offerCard,
+.profileCard {
+  min-height: 14rem;
+}
+
+.productAr {
+  margin: 0.75rem 0 0;
+  color: var(--bamora-gold-light);
+  font-size: 0.95rem;
+  direction: rtl;
+  text-align: right;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bamora-space-md);
+}
+
+.shopCard,
+.profileAction {
+  display: grid;
+  gap: 0.5rem;
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  color: var(--bamora-soft-white);
+  text-align: left;
+  box-shadow: var(--bamora-shadow-soft);
+  cursor: pointer;
+}
+
+.categoryTile,
+.shopCard {
+  min-height: 9rem;
+}
+
+.shopCard:hover,
+.profileAction:hover,
+.shopCard:focus-visible,
+.profileAction:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(201, 169, 98, 0.35);
+  outline: none;
+}
+
+.shopTitle,
+.profileAction {
+  font-family: var(--bamora-font-display);
+  font-size: 1.05rem;
+}
+
+.shopSub {
+  color: var(--bamora-gold-light);
+}
+
+.profileHeaderTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--bamora-space-md);
+  padding: var(--bamora-space-sm) 0;
+}
+
+.iconButton {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-gold-light);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.profileHero {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--bamora-space-md);
+  align-items: center;
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
+.profileAvatar {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at top left, rgba(201, 169, 98, 0.25), rgba(0, 0, 0, 0.4));
+  color: var(--bamora-gold);
+  font-weight: 700;
+  font-size: 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.profileName {
+  margin: 0;
+  font-family: var(--bamora-font-display);
+  font-size: 1.85rem;
+  color: var(--bamora-white);
+}
+
+.profileEmail {
+  margin: 0.45rem 0 0;
+  color: var(--bamora-soft-white);
+  opacity: 0.9;
+}
+
+.profileStatus {
+  display: inline-flex;
+  margin-top: 0.85rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(201, 169, 98, 0.14);
+  color: var(--bamora-gold);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.profileOptions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.profileOption {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+  cursor: pointer;
+  text-align: left;
+}
+
+.profileOption:hover,
+.profileOption:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(201, 169, 98, 0.25);
+  outline: none;
+}
+
+.helpHeader {
+  display: grid;
+  gap: var(--bamora-space-lg);
+  padding: var(--bamora-space-xl);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
+.helpSearch {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.95rem 1rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.searchIcon {
+  color: var(--bamora-gold);
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--bamora-white);
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.searchButton {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  border: none;
+  background: var(--bamora-gold);
+  color: var(--bamora-black);
+  cursor: pointer;
+}
+
+.faqList {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: var(--bamora-space-lg);
+}
+
+.contactSection {
+  display: grid;
+  gap: var(--bamora-space-lg);
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.contactCard {
+  display: grid;
+  gap: 1rem;
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.contactTag {
+  color: var(--bamora-gold-light);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+}
+
+.contactActions {
+  display: flex;
+  gap: var(--bamora-space-md);
+  flex-wrap: wrap;
+}
+
+.contactButton,
+.primaryButton,
+.secondaryButton {
+  padding: 0.95rem 1.15rem;
+  border-radius: 1rem;
+  border: none;
+  background: var(--bamora-gold);
+  color: var(--bamora-black);
+  cursor: pointer;
+}
+
+.contactButton {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.contactForm {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.contactField {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+  outline: none;
+}
+
+.contactField::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.reviewHeader {
+  display: grid;
+  gap: 0.75rem;
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.reviewBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  background: rgba(201, 169, 98, 0.16);
+  color: var(--bamora-gold);
+  font-weight: 700;
+}
+
+.ratingRow {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.starButton {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-gold);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.reviewField {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.reviewField textarea {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+  outline: none;
+}
+
+.reviewActions {
+  display: flex;
+  gap: var(--bamora-space-md);
+  flex-wrap: wrap;
+}
+
+.faqItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+  cursor: pointer;
+}
+
+.contactSection {
+  display: grid;
+  gap: var(--bamora-space-lg);
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.contactCard {
+  display: grid;
+  gap: 1rem;
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.contactTag {
+  color: var(--bamora-gold-light);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+}
+
+.contactActions {
+  display: flex;
+  gap: var(--bamora-space-md);
+  flex-wrap: wrap;
+}
+
+.contactButton,
+.primaryButton,
+.secondaryButton {
+  padding: 0.95rem 1.15rem;
+  border-radius: 1rem;
+  border: none;
+  background: var(--bamora-gold);
+  color: var(--bamora-black);
+  cursor: pointer;
+}
+
+.contactButton {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.contactForm {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.contactField {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+  outline: none;
+}
+
+.contactField::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.settingsList {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: var(--bamora-space-lg);
+}
+
+.settingsItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+  cursor: pointer;
+}
+
+.optionIcon {
+  display: flex;
+  align-items: center;
+  gap: var(--bamora-space-md);
+  margin-bottom: var(--bamora-space-lg);
+}
+
+.backButton {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-gold-light);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.trackingList {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: var(--bamora-space-lg);
+}
+
+.notificationCard {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.notificationIcon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: rgba(201, 169, 98, 0.12);
+  color: var(--bamora-gold);
+}
+
+.trackingCard {
+  display: grid;
+  gap: var(--bamora-space-lg);
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
+.trackingHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--bamora-space-md);
+  align-items: flex-start;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  background: rgba(201, 169, 98, 0.16);
+  color: var(--bamora-gold);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.timeline {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.85rem;
+  align-items: start;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.timelineItem:last-child {
+  border-bottom: none;
+}
+
+.timelineDot {
+  color: var(--bamora-gold);
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.timelineItem p,
+.timelineItem span {
+  margin: 0;
+}
+
+.timelineItem p {
+  color: var(--bamora-white);
+  font-weight: 600;
+}
+
+.timelineItem span {
+  color: var(--bamora-soft-white);
+  opacity: 0.9;
+  font-size: 0.95rem;
+}
+
+.mapCard {
+  border-radius: 1.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mapPreview {
+  min-height: 10rem;
+  display: grid;
+  place-items: center;
+  color: var(--bamora-soft-white);
+  opacity: 0.85;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+}
+
+.addressMapCard {
+  position: relative;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  margin-bottom: var(--bamora-space-lg);
+}
+
+.addressEditButton {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--bamora-gold);
+  color: var(--bamora-black);
+  cursor: pointer;
+}
+
+.addressRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--bamora-space-md);
+  padding: 1rem 1.25rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-soft-white);
+}
+
+.optionIcon {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 1rem;
+  align-items: center;
+  justify-content: center;
+  background: rgba(201, 169, 98, 0.12);
+  color: var(--bamora-gold);
+}
+
+.optionArrow {
+  color: var(--bamora-gold);
+  font-size: 1.2rem;
+}
+
+.profileCard {
+  min-height: auto;
+}
+
+.confirmationCard {
+  display: grid;
+  gap: var(--bamora-space-md);
+  padding: var(--bamora-space-xl);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.confirmationBadge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  color: var(--bamora-gold);
+  background: rgba(201, 169, 98, 0.12);
+}
+
+.profileActionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bamora-space-md);
+}
+
+.mirrorLauncher {
+  position: fixed;
+  bottom: calc(7.4rem + env(safe-area-inset-bottom));
+  right: 1rem;
+  z-index: 46;
+  padding: 0.8rem 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 169, 98, 0.5);
+  background: rgba(12, 12, 12, 0.94);
+  color: var(--bamora-gold);
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.mirrorOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  align-items: end;
+}
+
+.mirrorBackdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.mirrorPanel {
+  position: relative;
+  z-index: 1;
+  width: min(56rem, calc(100vw - 1rem));
+  margin: 0 auto 1rem;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 8, 8, 0.95);
+  backdrop-filter: blur(8px);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.mirrorPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mirrorPanelHeader h3 {
+  margin: 0.35rem 0 0;
+  color: var(--bamora-white);
+}
+
+.mirrorClose {
+  min-height: 2.35rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-soft-white);
+  cursor: pointer;
+}
+
+.mirrorCategoryRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mirrorCategoryChip {
+  min-height: 2.2rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+  cursor: pointer;
+}
+
+.mirrorCategoryChipActive {
+  border-color: rgba(201, 169, 98, 0.75);
+  background: rgba(201, 169, 98, 0.14);
+  color: var(--bamora-gold);
+}
+
+.mirrorProductGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.mirrorProductCard {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mirrorProductCard h4,
+.mirrorProductCard p {
+  margin: 0;
+}
+
+.mirrorProductMeta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--bamora-gold-light);
+}
+
+@media (max-width: 720px) {
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tileGrid,
+  .shopGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .tileGrid,
+  .shopGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

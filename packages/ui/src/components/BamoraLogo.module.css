@@ -1,0 +1,101 @@
+.logo {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.1em;
+  color: var(--bamora-gold);
+  user-select: none;
+  letter-spacing: 0.08em;
+}
+
+.mark,
+.wordmark {
+  display: inline-block;
+  line-height: 0.95;
+}
+
+.mark {
+  font-family: var(--bamora-font-display);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.wordmark {
+  font-family: var(--bamora-font-sans);
+  font-weight: 300;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.sm .mark {
+  font-size: 1.6rem;
+}
+
+.sm .wordmark {
+  font-size: 1rem;
+}
+
+.md .mark {
+  font-size: 2.8rem;
+}
+
+.md .wordmark {
+  font-size: 1.5rem;
+}
+
+.lg .mark {
+  font-size: 4.2rem;
+}
+
+.lg .wordmark {
+  font-size: 2rem;
+}
+
+.animated {
+  opacity: 0;
+  animation: logoAppear 1.6s var(--bamora-ease) forwards;
+}
+
+.animated::after {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  background: radial-gradient(circle, rgba(201, 169, 98, 0.24), transparent 55%);
+  opacity: 0;
+  animation: glowPulse 2.4s var(--bamora-ease) forwards;
+  pointer-events: none;
+}
+
+.logo.animated {
+  position: relative;
+}
+
+@keyframes logoAppear {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated,
+  .animated::after {
+    animation: none;
+    opacity: 1;
+  }
+}

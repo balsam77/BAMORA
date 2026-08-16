@@ -1,0 +1,67 @@
+.nav {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: max(0.5rem, env(safe-area-inset-bottom));
+  z-index: 45;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(201, 169, 98, 0.22);
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.94), rgba(5, 5, 5, 0.98));
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  backdrop-filter: blur(10px);
+}
+
+.item,
+.activeItem {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  padding: 0.45rem 0.25rem;
+  border-radius: 0.8rem;
+  color: rgba(248, 248, 248, 0.9);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  transition: background var(--bamora-duration-fast) var(--bamora-ease),
+    transform var(--bamora-duration-fast) var(--bamora-ease),
+    border-color var(--bamora-duration-fast) var(--bamora-ease);
+}
+
+.item:hover,
+.item:focus-visible,
+.activeItem {
+  background: rgba(201, 169, 98, 0.12);
+  transform: translateY(-1px);
+}
+
+.activeItem {
+  border-color: rgba(201, 169, 98, 0.75);
+  background: linear-gradient(180deg, rgba(201, 169, 98, 0.22), rgba(201, 169, 98, 0.1));
+  box-shadow: 0 0 0 1px rgba(201, 169, 98, 0.35) inset;
+}
+
+.icon {
+  color: var(--bamora-gold);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.label {
+  font-size: 0.68rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.activeItem .label,
+.activeItem .icon {
+  color: var(--bamora-gold);
+}
+
+@media (max-width: 380px) {
+  .label {
+    font-size: 0.62rem;
+  }
+}

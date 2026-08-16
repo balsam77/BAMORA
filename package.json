@@ -1,0 +1,25 @@
+{
+  "name": "bamora",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:customer": "turbo dev --filter=@bamora/customer",
+    "dev:merchant": "turbo dev --filter=@bamora/merchant",
+    "dev:admin": "turbo dev --filter=@bamora/admin",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@10.12.1",
+  "engines": {
+    "node": ">=20"
+  }
+}

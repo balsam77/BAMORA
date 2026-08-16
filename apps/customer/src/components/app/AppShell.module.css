@@ -1,0 +1,9 @@
+.shell {
+  min-height: 100dvh;
+  background: radial-gradient(circle at 15% 15%, rgba(201, 169, 98, 0.12), transparent 24%),
+    linear-gradient(180deg, #020202 0%, #0f0f0f 100%);
+  color: var(--bamora-soft-white);
+  padding: var(--bamora-space-lg) var(--bamora-space-md) calc(9rem + env(safe-area-inset-bottom));
+  display: grid;
+  gap: var(--bamora-space-lg);
+}
