@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   PaymentIntentInput,
@@ -9,6 +9,7 @@ import {
 import { ManualPaymentProvider } from "./providers/manual-payment.provider";
 import { PaypalPaymentProvider } from "./providers/paypal-payment.provider";
 import { StripePaymentProvider } from "./providers/stripe-payment.provider";
+import { paymentsEnabled } from "../common/deployment-config";
 
 @Injectable()
 export class PaymentGatewayService {
@@ -33,11 +34,26 @@ export class PaymentGatewayService {
     return this.manualProvider;
   }
 
+  isEnabled() {
+    return paymentsEnabled({
+      NODE_ENV: process.env.NODE_ENV,
+      PAYMENTS_ENABLED: this.configService.get<string>("PAYMENTS_ENABLED"),
+    });
+  }
+
+  assertEnabled() {
+    if (!this.isEnabled()) {
+      throw new ServiceUnavailableException("Payments and checkout are disabled pending payment-provider approval.");
+    }
+  }
+
   createPaymentIntent(input: PaymentIntentInput): Promise<PaymentIntentResult> {
+    this.assertEnabled();
     return this.getProvider().createPaymentIntent(input);
   }
 
   refund(input: RefundInput): Promise<RefundResult> {
+    this.assertEnabled();
     return this.getProvider().refund(input);
   }
 

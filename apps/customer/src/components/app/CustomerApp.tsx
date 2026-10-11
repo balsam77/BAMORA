@@ -31,6 +31,7 @@ import {
   resolveDynamicCategories,
 } from "@/lib/dynamicCategories";
 import styles from "./CustomerApp.module.css";
+import { customerPaymentsEnabled, paymentUnavailableMessage } from "@/lib/paymentAvailability";
 
 type PageKey = "home" | "shop" | "favorites" | "offers" | "help" | "profile";
 
@@ -1117,12 +1118,14 @@ function CheckoutScreen({
   defaultAddress,
   onBack,
   onConfirm,
+  paymentNotice,
 }: {
   product: Product;
   profile: CustomerProfile;
   defaultAddress: CustomerAddress | null;
   onBack: () => void;
   onConfirm: () => void;
+  paymentNotice: string | null;
 }) {
   return (
     <div className={styles.screen}>
@@ -1163,7 +1166,8 @@ function CheckoutScreen({
             <span>طريقة الدفع</span>
             <input type="text" value="PayPal" className={styles.contactField} readOnly />
           </label>
-          <button type="button" className={styles.primaryButton} onClick={onConfirm}>تأكيد الطلب</button>
+          <button type="button" className={styles.primaryButton} disabled={!customerPaymentsEnabled} onClick={onConfirm}>تأكيد الطلب</button>
+          {paymentNotice && <p role="status">{paymentNotice}</p>}
         </form>
       </section>
     </div>
@@ -2215,14 +2219,22 @@ const productsInSelectedCategory = useMemo(() => {
   const closeCheckout = () => setCheckoutProduct(null);
 
   const confirmOrder = async () => {
+    if (!customerPaymentsEnabled) {
+      setDataError(paymentUnavailableMessage(language));
+      return;
+    }
     if (!checkoutProduct) {
       return;
     }
 
-    await customerRepository.checkout();
-    setCompletedOrderProduct(checkoutProduct);
-    setCheckoutProduct(null);
-    await hydrateCustomerData();
+    try {
+      await customerRepository.checkout();
+      setCompletedOrderProduct(checkoutProduct);
+      setCheckoutProduct(null);
+      await hydrateCustomerData();
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "Checkout failed.");
+    }
   };
 
   const finishOrder = () => {
@@ -2384,6 +2396,7 @@ const productsInSelectedCategory = useMemo(() => {
             defaultAddress={defaultAddress}
             onBack={closeCheckout}
             onConfirm={() => void confirmOrder()}
+            paymentNotice={customerPaymentsEnabled ? dataError : paymentUnavailableMessage(language)}
           />
         ) : selectedProduct ? (
           <ProductDetailsScreen

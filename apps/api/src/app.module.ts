@@ -20,6 +20,7 @@ import { PrismaService } from "./prisma/prisma.service";
 import { AuthRepository } from "./repositories/auth.repository";
 import { CommerceRepository } from "./repositories/commerce.repository";
 import { CommerceService } from "./services/commerce.service";
+import { getJwtSecret } from "./common/deployment-config";
 
 @Module({
   imports: [
@@ -27,7 +28,10 @@ import { CommerceService } from "./services/commerce.service";
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>("JWT_SECRET") ?? "bamora-dev-secret",
+        secret: getJwtSecret({
+          NODE_ENV: process.env.NODE_ENV,
+          JWT_SECRET: configService.get<string>("JWT_SECRET"),
+        }),
       }),
     }),
   ],

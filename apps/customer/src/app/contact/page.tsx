@@ -23,11 +23,16 @@ function t(language: AppLanguage, values: { ar: string; he: string; en?: string 
 }
 
 export default function ContactPage() {
-  const [sent, setSent] = useState(false);
+  const [draftPrepared, setDraftPrepared] = useState(false);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSent(true);
+    const data = new FormData(event.currentTarget);
+    const body = ["name", "email", "phone", "message"]
+      .map((field) => `${field}: ${String(data.get(field) ?? "")}`)
+      .join("\n");
+    setDraftPrepared(true);
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("BAMORA contact")}&body=${encodeURIComponent(body)}`;
   };
 
   return (
@@ -93,15 +98,15 @@ export default function ContactPage() {
             </div>
 
             <button className={styles.submit} type="submit">
-              {t(language, { ar: "إرسال", he: "שליחה", en: "Send" })}
+              {t(language, { ar: "إعداد رسالة بريد", he: "הכנת הודעת אימייל", en: "Prepare email" })}
             </button>
 
-            {sent ? (
+            {draftPrepared ? (
               <p className={styles.notice}>
                 {t(language, {
-                  ar: "تم استلام رسالتك مبدئيًا. سيتم الرد عليك قريبًا.",
-                  he: "ההודעה התקבלה בהצלחה. נחזור אליך בהקדם.",
-                  en: "Your message was received successfully. We will get back to you soon.",
+                  ar: "لم تُرسل الرسالة من الموقع. أرسلها من تطبيق البريد، أو استخدم رابط البريد الإلكتروني أعلاه.",
+                  he: "ההודעה לא נשלחה מהאתר. יש לשלוח אותה מאפליקציית האימייל או להשתמש בקישור האימייל למעלה.",
+                  en: "The website has not sent your message. Send it from your email application or use the email link above.",
                 })}
               </p>
             ) : null}

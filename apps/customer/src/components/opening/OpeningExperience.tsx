@@ -19,6 +19,7 @@ import {
   resolveDynamicCategories,
 } from "@/lib/dynamicCategories";
 import styles from "./OpeningExperience.module.css";
+import { customerPaymentsEnabled, paymentUnavailableMessage } from "@/lib/paymentAvailability";
 
 type Stage = "loading" | "portal" | "splash" | "advice" | "account" | "selection" | "mirror" | "department" | "checkout" | "success" | "home";
 
@@ -258,7 +259,9 @@ const currentPort = Number(url.port || "0");
   }, [categories, selectedCategory]);
 
   const confirmPayment = useCallback(() => {
-    setStage("success");
+    if (customerPaymentsEnabled) {
+      setStage("success");
+    }
   }, []);
 
   const paymentMethods = [
@@ -647,10 +650,11 @@ const currentPort = Number(url.port || "0");
               <button type="button" className={styles.secondaryButton} onClick={() => setStage("department")}>
                 العودة للتعديل
               </button>
-              <button type="button" className={styles.paymentButton} onClick={confirmPayment}>
+              <button type="button" className={styles.paymentButton} disabled={!customerPaymentsEnabled} onClick={confirmPayment}>
                 الدفع
               </button>
             </div>
+            {!customerPaymentsEnabled && <p role="status">{paymentUnavailableMessage(language)}</p>}
           </div>
         </div>
       )}

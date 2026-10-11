@@ -42,8 +42,18 @@ export class RolesGuard implements CanActivate {
 
     try {
       const payload = this.jwtService.verify<{ sub: string; email: string; role: "customer" | "merchant" | "super-admin" }>(bearerToken);
+      const databaseRoles = {
+        customer: "CUSTOMER",
+        merchant: "MERCHANT",
+        "super-admin": "ADMIN",
+      } as const;
+      if (!Object.prototype.hasOwnProperty.call(databaseRoles, payload.role) ||
+          typeof payload.sub !== "string" || typeof payload.email !== "string") {
+        return false;
+      }
       const user = await this.authRepository.findUserById(payload.sub);
-      if (!user || user.email !== payload.email || user.status !== "ACTIVE") {
+      if (!user || user.email !== payload.email || user.status !== "ACTIVE" ||
+          user.role !== databaseRoles[payload.role]) {
         return false;
       }
 

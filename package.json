@@ -13,7 +13,8 @@
     "dev:business": "turbo dev --filter=@bamora/business",
     "build": "turbo build",
     "lint": "turbo lint",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "test": "pnpm --filter @bamora/api test && pnpm --filter @bamora/platform test && node --test scripts/*.test.cjs"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.0",

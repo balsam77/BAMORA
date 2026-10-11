@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from "@bamora/platform";
+
 export type DynamicCategory = {
   id: string;
   titleAr: string;
@@ -6,7 +8,6 @@ export type DynamicCategory = {
 };
 
 const STORAGE_KEY = "bamoraMerchantCategories";
-const CATEGORIES_API_ENDPOINT = `${process.env.NEXT_PUBLIC_BAMORA_API_URL ?? "http://127.0.0.1:4001"}/api/catalog/categories`;
 
 const defaultCategories: DynamicCategory[] = [
   { id: "women", titleAr: "نسائي", icon: "👗" },
@@ -136,7 +137,7 @@ async function getCategoriesFromApi(): Promise<DynamicCategory[]> {
   }
 
   try {
-    const response = await fetch(CATEGORIES_API_ENDPOINT, { cache: "no-store" });
+    const response = await fetch(`${getApiBaseUrl()}/api/catalog/categories`, { cache: "no-store" });
     if (!response.ok) {
       return [];
     }

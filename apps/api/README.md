@@ -1,5 +1,10 @@
 # BAMORA API Scaffold
 
+For the current production deployment procedure, see
+[DEPLOYMENT.md](../../docs/DEPLOYMENT.md). The runtime uses Prisma/PostgreSQL,
+Bearer-token role authorization and configurable persistent upload storage.
+Payments are disabled by default in production until a separately approved activation.
+
 This NestJS app now includes complete endpoint scaffolding for customer, merchant, and super admin flows.
 
 ## Runtime
@@ -85,8 +90,8 @@ Default port is `4001`.
 ## Database Integration
 
 - Prisma schema is already defined in `prisma/schema.prisma` with users, merchants, products, variants, inventory, orders, payment, and shipping models.
-- Current API uses in-memory service `src/services/mock-data.service.ts`.
-- Replace mock service methods with Prisma queries incrementally without changing route contracts.
+- Current API uses `AuthRepository` and `CommerceRepository` backed by Prisma.
+- The old mock service remains in the source but is not the active API data layer.
 
 ## Future Payment/Shipping Integrations
 

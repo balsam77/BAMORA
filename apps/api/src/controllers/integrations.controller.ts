@@ -1,10 +1,14 @@
 import { Body, Controller, Get, Post } from "@nestjs/common";
 import { Roles } from "../common/roles.decorator";
 import { CommerceService } from "../services/commerce.service";
+import { PaymentGatewayService } from "../payments/payment-gateway.service";
 
 @Controller("api/integrations")
 export class IntegrationsController {
-  constructor(private readonly commerceService: CommerceService) {}
+  constructor(
+    private readonly commerceService: CommerceService,
+    private readonly paymentGateway: PaymentGatewayService,
+  ) {}
 
   @Roles("super-admin")
   @Get("config")
@@ -14,6 +18,7 @@ export class IntegrationsController {
 
   @Post("webhooks/payment")
   paymentWebhook(@Body() body: Record<string, unknown>) {
+    this.paymentGateway.assertEnabled();
     return {
       accepted: true,
       type: "payment",

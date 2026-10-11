@@ -3,10 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "node ../merchant/node_modules/next/dist/bin/next dev --port 3003",
-    "build": "node ../merchant/node_modules/next/dist/bin/next build",
-    "start": "node ../merchant/node_modules/next/dist/bin/next start --port 3003",
-    "lint": "node ../merchant/node_modules/next/dist/bin/next lint",
+    "dev": "next dev --port 3003",
+    "build": "next build",
+    "start": "next start --port 3003",
+    "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

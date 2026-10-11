@@ -229,6 +229,10 @@ export class AuthService {
 
     let user = await this.authRepository.findUserByEmail(email);
 
+    if (!user && process.env.NODE_ENV === "production") {
+      throw new UnauthorizedException("Invalid credentials.");
+    }
+
     if (!user) {
       const created = await this.authRepository.createUser({
         email,
@@ -253,7 +257,7 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials.");
     }
 
-    if (user.merchant?.status === "PENDING") {
+    if (user.merchant?.status === "PENDING" && process.env.NODE_ENV !== "production") {
       await this.authRepository.activateMerchantByUserId(user.id);
       user = await this.authRepository.findUserById(user.id);
       if (!user) {
@@ -271,7 +275,13 @@ export class AuthService {
     const email = dto.email.toLowerCase().trim();
     const password = dto.password.trim();
 
-    if (email === "bamora" && password === "balsam99") {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      process.env.DEV_ADMIN_USERNAME &&
+      process.env.DEV_ADMIN_PASSWORD &&
+      email === process.env.DEV_ADMIN_USERNAME &&
+      password === process.env.DEV_ADMIN_PASSWORD
+    ) {
       let user = await this.authRepository.findUserByEmail(email);
       if (!user) {
         user = await this.authRepository.createUser({

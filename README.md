@@ -22,3 +22,6 @@ npm run dev:customer -w @bamora/customer
 Open [http://localhost:3000](http://localhost:3000) for the customer opening experience.
 
 See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for full specification.
+
+See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for Vercel/Render settings, persistent
+uploads, required environment names and the payment-disabled review deployment.

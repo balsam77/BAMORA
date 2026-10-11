@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -188,7 +188,21 @@ export class CommerceRepository {
     });
   }
 
+  private async requireColumns(table: string, columns: string[]) {
+    const existing = await this.prisma.$queryRaw<Array<{ column_name: string }>>`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = ${table}
+    `;
+    if (columns.some((column) => !existing.some((row) => row.column_name === column))) {
+      throw new ServiceUnavailableException("Database schema is incompatible. Automatic schema changes are disabled in production.");
+    }
+  }
+
   async ensureOrderItemImageSnapshotColumn() {
+    if (process.env.NODE_ENV === "production") {
+      await this.requireColumns("order_items", ["image_snapshot"]);
+      return;
+    }
     try {
       await this.prisma.$executeRawUnsafe(
         "ALTER TABLE \"order_items\" ADD COLUMN IF NOT EXISTS \"image_snapshot\" TEXT NOT NULL DEFAULT ''",
@@ -201,6 +215,10 @@ export class CommerceRepository {
   }
 
   async ensureMerchantSubOrderAttentionStateColumn() {
+    if (process.env.NODE_ENV === "production") {
+      await this.requireColumns("merchant_sub_orders", ["attention_state", "process_by_at", "delayed_at"]);
+      return;
+    }
     try {
       await this.prisma.$executeRawUnsafe(
         "ALTER TABLE \"merchant_sub_orders\" ADD COLUMN IF NOT EXISTS \"attention_state\" TEXT NOT NULL DEFAULT 'NONE'",

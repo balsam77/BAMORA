@@ -1,3 +1,6 @@
+import { getApiBaseUrl as resolveApiBaseUrl, getDataSourceMode } from "./api-environment";
+export { getApiBaseUrl } from "./api-environment";
+
 export type AppRole = "customer" | "merchant" | "super-admin";
 export type MerchantOrderStatus = "new" | "preparing" | "shipped" | "delivered" | "canceled";
 export type MerchantApprovalStatus = "pending" | "active" | "rejected" | "suspended";
@@ -385,25 +388,6 @@ const REFRESH_TOKEN_KEY = "bamoraRefreshToken";
 const AUTH_USER_ID_KEY = "bamoraAuthUserId";
 const AUTH_USER_ROLE_KEY = "bamoraAuthUserRole";
 
-function readRuntimeEnv(name: string) {
-  const maybeProcess = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
-  return maybeProcess?.env?.[name];
-}
-
-const API_BASE_URL = readRuntimeEnv("NEXT_PUBLIC_BAMORA_API_URL") ?? "http://localhost:4001";
-
-function resolveApiBaseUrl() {
-  if (typeof window !== "undefined") {
-    const configured = readRuntimeEnv("NEXT_PUBLIC_BAMORA_API_URL");
-    if (configured && configured.trim().length > 0) {
-      return configured;
-    }
-
-    return `${window.location.protocol}//${window.location.hostname}:4001`;
-  }
-
-  return API_BASE_URL;
-}
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -2520,11 +2504,7 @@ function getMode(explicitMode?: DataSourceMode): DataSourceMode {
     return explicitMode;
   }
 
-  if (readRuntimeEnv("NEXT_PUBLIC_BAMORA_DATA_SOURCE") === "api") {
-    return "api";
-  }
-
-  return "mock";
+  return getDataSourceMode();
 }
 
 export function createMerchantRepository(mode?: DataSourceMode): MerchantRepository {

@@ -7,6 +7,7 @@ import {
   ADMIN_NAME_KEY,
   clearRoleSession,
   createMerchantRepository,
+  getApiBaseUrl,
   getCurrentRole,
   setCurrentRole,
   MERCHANT_NAME_KEY,
@@ -68,11 +69,10 @@ const DELIVERY_ASSIGNMENTS_KEY = "bamoraBusinessDeliveryAssignments";
 const DELIVERY_STATUSES: DeliveryStatus[] = ["ready", "assigned", "picked_up", "out_for_delivery", "delivered", "cancelled"];
 const DELIVERY_ACTIVE_FLOW: DeliveryStatus[] = ["ready", "assigned", "picked_up", "out_for_delivery", "delivered"];
 
-const DELIVERY_BOOTSTRAP_USERNAME = process.env.NEXT_PUBLIC_BAMORA_DELIVERY_USERNAME ?? "";
-const DELIVERY_BOOTSTRAP_PASSWORD = process.env.NEXT_PUBLIC_BAMORA_DELIVERY_PASSWORD ?? "";
+const DELIVERY_BOOTSTRAP_USERNAME = process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_BAMORA_DELIVERY_USERNAME ?? "" : "";
+const DELIVERY_BOOTSTRAP_PASSWORD = process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_BAMORA_DELIVERY_PASSWORD ?? "" : "";
 const ADMIN_API_EMAIL = process.env.NEXT_PUBLIC_BAMORA_ADMIN_EMAIL ?? "admin@bamora.local";
-const ADMIN_API_PASSWORD = process.env.NEXT_PUBLIC_BAMORA_ADMIN_PASSWORD ?? "";
-const API_BASE_URL = process.env.NEXT_PUBLIC_BAMORA_API_URL ?? "http://localhost:4001";
+const ADMIN_API_PASSWORD = process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_BAMORA_ADMIN_PASSWORD ?? "" : "";
 
 const merchantRepository = createMerchantRepository("api");
 
@@ -82,7 +82,7 @@ async function establishAdminApiSession(preferredEmail?: string, preferredPasswo
   const password = preferredPassword?.trim() || ADMIN_API_PASSWORD;
 
   for (const email of candidates) {
-    const response = await fetch(`${API_BASE_URL}/api/auth/admin/login`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/admin/login`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -579,7 +579,7 @@ function DeliveryWorkspace({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${API_BASE_URL}/api/admin/orders`, {
+    fetch(`${getApiBaseUrl()}/api/admin/orders`, {
       headers: canUseStorage() && window.localStorage.getItem("bamoraAccessToken")
         ? { Authorization: `Bearer ${window.localStorage.getItem("bamoraAccessToken")}` }
         : undefined,
@@ -1310,6 +1310,10 @@ export default function BusinessPage() {
     }
 
     if (canUseStorage() && window.localStorage.getItem(DELIVERY_ROLE_KEY) === "delivery") {
+      if (process.env.NODE_ENV === "production") {
+        setNotice("Delivery access requires server-side staff authorization before public deployment.");
+        return;
+      }
       setRole("delivery");
       setWorkspace("delivery");
       setAccountType("delivery");
@@ -1369,6 +1373,10 @@ export default function BusinessPage() {
     }
 
     if (accountType === "delivery") {
+      if (process.env.NODE_ENV === "production") {
+        setNotice("Delivery access requires server-side staff authorization. Contact the administrator; no credentials are stored or submitted.");
+        return;
+      }
       const deliveryEmployees = readJsonStorage<DeliveryEmployee[]>(DELIVERY_EMPLOYEES_KEY, []);
       const matchedDeliveryUser = authenticateDeliveryUser(normalizedUsername, normalizedPassword, deliveryEmployees);
       if (!matchedDeliveryUser) {

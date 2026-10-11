@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { basename, join } from "path";
 import { PaymentGatewayService } from "../payments/payment-gateway.service";
 import { CommerceRepository } from "../repositories/commerce.repository";
+import { getUploadsDirectory } from "../common/deployment-config";
 
 type SessionUser = {
   sub: string;
@@ -93,7 +94,7 @@ export class CommerceService {
     await Promise.all(
       fileNames.map(async (fileName) => {
         try {
-          await unlink(join(process.cwd(), "uploads", fileName));
+          await unlink(join(getUploadsDirectory(), fileName));
         } catch {
           // Best-effort cleanup; product lifecycle should not fail on missing files.
         }
@@ -382,6 +383,7 @@ export class CommerceService {
   }
 
   async checkout(user?: SessionUser) {
+    this.paymentGateway.assertEnabled();
     const customerId = await this.resolveCustomerId(user);
     await this.repository.ensureOrderItemImageSnapshotColumn();
     await this.repository.ensureMerchantSubOrderAttentionStateColumn();
@@ -1287,6 +1289,7 @@ export class CommerceService {
   }
 
   async confirmBamoraCharge(chargeId: string, user?: SessionUser) {
+    this.paymentGateway.assertEnabled();
     if (!user?.sub) {
       throw new BadRequestException("Admin identity is required.");
     }
@@ -1508,6 +1511,7 @@ export class CommerceService {
   }
 
   async createPaymentForOrder(orderId: string) {
+    this.paymentGateway.assertEnabled();
     const order = await this.repository.db.order.findUnique({ where: { id: orderId }, include: { payment: true } });
     if (!order) {
       throw new NotFoundException("Order not found.");
@@ -1536,6 +1540,7 @@ export class CommerceService {
   }
 
   async markPaymentStatus(orderId: string, status: "PENDING" | "PAID" | "FAILED" | "REFUNDED") {
+    this.paymentGateway.assertEnabled();
     const payment = await this.repository.db.payment.update({ where: { orderId }, data: { status } });
 
     if (status === "PAID") {
@@ -1547,6 +1552,7 @@ export class CommerceService {
   }
 
   async refundOrder(orderId: string, reason?: string) {
+    this.paymentGateway.assertEnabled();
     const payment = await this.repository.db.payment.findUnique({ where: { orderId } });
     if (!payment) {
       throw new NotFoundException("Payment not found for order.");
@@ -1581,7 +1587,7 @@ export class CommerceService {
     return {
       payment: {
         provider: this.paymentGateway.getProviderName(),
-        status: "ready",
+        status: this.paymentGateway.isEnabled() ? "ready" : "disabled",
         supported: ["manual", "paypal", "stripe"],
       },
       shipping: {
