@@ -2,23 +2,19 @@ services:
   - type: web
     name: bamora-api
     runtime: node
-    plan: starter
+    plan: free
     branch: main
     autoDeployTrigger: off
     buildCommand: corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @bamora/api build
     startCommand: pnpm --filter @bamora/api start
     healthCheckPath: /api/health/ready
-    disk:
-      name: bamora-uploads
-      mountPath: /var/data/bamora/uploads
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: NODE_ENV
         value: production
-      - key: UPLOAD_DIR
-        value: /var/data/bamora/uploads
+      - key: UPLOAD_STORAGE
+        value: disabled
       - key: PAYMENTS_ENABLED
         value: "false"
       - key: DATABASE_URL

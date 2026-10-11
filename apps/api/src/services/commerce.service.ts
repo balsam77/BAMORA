@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { basename, join } from "path";
 import { PaymentGatewayService } from "../payments/payment-gateway.service";
 import { CommerceRepository } from "../repositories/commerce.repository";
-import { getUploadsDirectory } from "../common/deployment-config";
+import { getUploadsDirectory, localUploadsEnabled } from "../common/deployment-config";
 
 type SessionUser = {
   sub: string;
@@ -83,6 +83,7 @@ export class CommerceService {
   }
 
   private async removeLocalUploadFiles(imageUrls: string[]) {
+    if (!localUploadsEnabled()) return;
     const fileNames = Array.from(
       new Set(
         imageUrls

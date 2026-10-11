@@ -81,6 +81,14 @@ test("development CORS permits all four local apps", () => {
   for (const port of [3000, 3001, 3002, 3003]) assert.ok(origins.includes(`http://localhost:${port}`));
 });
 
+test("production disables local uploads by default and validates explicit storage modes", () => {
+  assert.equal(config.localUploadsEnabled({ NODE_ENV: "production" }), false);
+  assert.equal(config.localUploadsEnabled({}), true);
+  assert.equal(config.localUploadsEnabled({ NODE_ENV: "production", UPLOAD_STORAGE: "local" }), true);
+  assert.equal(config.localUploadsEnabled({ UPLOAD_STORAGE: "disabled" }), false);
+  assert.throws(() => config.localUploadsEnabled({ UPLOAD_STORAGE: "unknown" }), /UPLOAD_STORAGE/);
+});
+
 test("production requires explicit strong JWT secret and absolute upload directory", () => {
   assert.throws(() => config.getJwtSecret({ NODE_ENV: "production" }));
   assert.throws(() => config.getJwtSecret({ NODE_ENV: "production", JWT_SECRET: "short" }));
@@ -152,8 +160,9 @@ test("HTTP uploads use configured storage, survive app restart and obey exact CO
   const { UploadsController } = require("../dist/controllers/uploads.controller");
   const { configureHttpInfrastructure } = require("../dist/common/http-infrastructure");
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "bamora-upload-test-"));
-  const previous = { NODE_ENV: process.env.NODE_ENV, UPLOAD_DIR: process.env.UPLOAD_DIR, CORS_ORIGINS: process.env.CORS_ORIGINS };
+  const previous = { NODE_ENV: process.env.NODE_ENV, UPLOAD_DIR: process.env.UPLOAD_DIR, CORS_ORIGINS: process.env.CORS_ORIGINS, UPLOAD_STORAGE: process.env.UPLOAD_STORAGE };
   process.env.NODE_ENV = "production";
+  process.env.UPLOAD_STORAGE = "local";
   process.env.UPLOAD_DIR = directory;
   process.env.CORS_ORIGINS = "https://shop.example.com";
   class UploadTestModule {}
@@ -203,6 +212,31 @@ test("HTTP uploads use configured storage, survive app restart and obey exact CO
     assert.deepEqual(Buffer.from(await restored.arrayBuffer()), bytes);
     const denied = await fetch(`${base}${image.url}`, { headers: { Origin: "https://unrelated.example.com" } });
     assert.equal(denied.headers.get("access-control-allow-origin"), null);
+    await app.close();
+    app = undefined;
+    delete process.env.UPLOAD_STORAGE;
+    delete process.env.UPLOAD_DIR;
+    base = await start();
+    const disabledToken = app.get(JwtService).sign({ sub: "test-merchant", email: "merchant@example.com", role: "merchant" });
+    for (const body of [undefined, form]) {
+      const blocked = await fetch(`${base}/api/uploads/images`, {
+        method: "POST", body,
+        headers: { Authorization: `Bearer ${disabledToken}`, Origin: "https://shop.example.com" },
+      });
+      assert.equal(blocked.status, 503);
+      assert.match((await blocked.json()).message, /File uploads are temporarily unavailable/);
+      assert.equal(blocked.headers.get("access-control-allow-origin"), "https://shop.example.com");
+    }
+    const malformed = await fetch(`${base}/api/uploads/images`, {
+      method: "POST", body: "not a valid multipart upload",
+      headers: { Authorization: `Bearer ${disabledToken}`, "Content-Type": "multipart/form-data" },
+    });
+    assert.equal(malformed.status, 503, "guard must reject before Multer parses the request");
+    assert.equal((await fetch(`${base}${image.url}`)).status, 404);
+    const commerce = new CommerceService({}, {});
+    await commerce.removeLocalUploadFiles([image.url]);
+    assert.deepEqual(await fs.readFile(path.join(directory, image.filename)), bytes);
+    assert.deepEqual(await fs.readdir(directory), [image.filename]);
   } finally {
     if (app) await app.close();
     for (const [key, value] of Object.entries(previous)) {

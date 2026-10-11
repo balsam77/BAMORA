@@ -61,7 +61,7 @@ No database has been baselined, migrated, seeded or externally verified by this 
 
 Use a Node **Web Service** from `balsam77/BAMORA`, branch `main`. Leave Root Directory
 empty (repository root). `render.yaml` is an optional Blueprint with the same settings.
-Creating it provisions a paid Starter service and a 1 GB disk: approve the cost first.
+The Blueprint uses Render Free with local uploads disabled and no persistent disk.
 Automatic deployments are disabled in the Blueprint.
 
 | Setting | Value |
@@ -70,7 +70,7 @@ Automatic deployments are disabled in the Blueprint.
 | Build Command | `corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @bamora/api build` |
 | Start Command | `pnpm --filter @bamora/api start` |
 | Health Check Path | `/api/health/ready` |
-| Persistent disk mount | `/var/data/bamora/uploads` |
+| Upload storage | Disabled on Free; no disk required |
 
 Set these in Render's environment/secret controls, never in committed files:
 
@@ -80,7 +80,8 @@ Set these in Render's environment/secret controls, never in committed files:
 | `DATABASE_URL` | The existing authorized PostgreSQL connection; do not replace the local configuration or change the database. |
 | `JWT_SECRET` | Random, strong secret, at least 32 characters; not a development default. |
 | `CORS_ORIGINS` | Comma-separated exact HTTPS origins for deployed Customer, Merchant, Admin and Business as applicable. No paths, trailing slash or wildcard. |
-| `UPLOAD_DIR` | `/var/data/bamora/uploads`, matching the persistent disk mount. |
+| `UPLOAD_STORAGE` | `disabled` on Free. Production defaults to disabled when unset. `local` requires a separately approved persistent disk. |
+| `UPLOAD_DIR` | Only needed with `UPLOAD_STORAGE=local`: absolute path matching the persistent disk mount. Not used when disabled; never point it at `/tmp` to enable production uploads. |
 | `PAYMENTS_ENABLED` | `false` until payment-provider approval and a separately approved activation. |
 | `PORT` | Supplied by Render; the API binds to `0.0.0.0`. |
 | `MERCHANT_SUBORDER_DELAY_HOURS` | Optional; retain the existing business value if configured. |
@@ -91,7 +92,17 @@ Render terminates HTTPS and forwards traffic to the application's assigned port.
 
 ### Persistent uploads
 
-Startup creates the configured directory if needed and verifies write access. Upload
+On Render Free, production defaults to disabled local storage. Startup does not create
+or access an upload directory, does not serve local `/uploads/` files, and product
+cleanup does not delete local files. Authorized upload requests receive HTTP 503 with
+an explicit unavailable message before multipart parsing or disk writes. Unauthorized
+requests retain existing authorization errors. Existing product/account/catalog
+behavior is otherwise unchanged; local-disk images will not be available on Free.
+Production uploads need separately approved durable object storage or a paid disk.
+Do not use an ephemeral directory as a substitute. Local development defaults to
+the existing local-disk behavior.
+
+With `UPLOAD_STORAGE=local`, startup creates the configured directory if needed and verifies write access. Upload
 storage, static `/uploads/` serving and product-file cleanup share the same directory.
 The mount must be a persistent disk, not merely a directory on an ephemeral filesystem.
 The health endpoint cannot prove disk persistence: verify the attached disk in Render,
@@ -101,7 +112,7 @@ Existing product images may need a separately authorized transfer or re-upload.
 
 Use one API instance with this local-disk design. Multi-instance scaling requires a
 separately designed shared/object storage backend. Back up the disk and database
-according to their providers' policies.
+according to their providers' policies. The Blueprint does not provision this disk.
 
 ### API checks after an authorized deployment
 

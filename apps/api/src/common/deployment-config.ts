@@ -2,6 +2,14 @@ import { isAbsolute, resolve } from "path";
 
 type Environment = Record<string, string | undefined>;
 
+export function localUploadsEnabled(env: Environment = process.env) {
+  const storage = env.UPLOAD_STORAGE ?? (env.NODE_ENV === "production" ? "disabled" : "local");
+  if (storage !== "disabled" && storage !== "local") {
+    throw new Error("UPLOAD_STORAGE must be disabled or local.");
+  }
+  return storage === "local";
+}
+
 export function getUploadsDirectory(env: Environment = process.env) {
   const configured = env.UPLOAD_DIR?.trim();
   if (env.NODE_ENV === "production" && (!configured || !isAbsolute(configured))) {

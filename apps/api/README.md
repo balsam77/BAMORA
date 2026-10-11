@@ -4,6 +4,10 @@ For the current production deployment procedure, see
 [DEPLOYMENT.md](../../docs/DEPLOYMENT.md). The runtime uses Prisma/PostgreSQL,
 Bearer-token role authorization and configurable persistent upload storage.
 Payments are disabled by default in production until a separately approved activation.
+Production local uploads are disabled by default for Render Free: authorized upload
+requests return 503 before file processing. No upload directory is created or served.
+Development retains local uploads. Enable `UPLOAD_STORAGE=local` in production only
+with an approved persistent disk and absolute `UPLOAD_DIR`; never use ephemeral storage.
 
 This NestJS app now includes complete endpoint scaffolding for customer, merchant, and super admin flows.
 
