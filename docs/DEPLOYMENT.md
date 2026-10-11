@@ -12,8 +12,10 @@ to GitHub. Do not upload `uploads`, build output, or local credentials.
   authorized connection, with TLS as required by its provider. A database on a personal
   computer is not automatically reachable from Render.
 - Have the database owner verify that the current schema matches
-  `apps/api/prisma/schema.prisma`. Startup connectivity and `SELECT 1` readiness do
-  not verify all application tables.
+  `apps/api/prisma/schema.prisma`. Readiness checks every Prisma model table and
+  scalar column with zero-row SELECTs, without reading customer records. It rejects
+  missing tables/columns or missing read permissions. It does not certify column
+  types, constraints, business data, or that this is the intended Supabase project.
 - Production no longer performs the legacy automatic `ALTER TABLE` operations for
   order snapshots/suborder attention columns. Missing columns cause an explicit
   service-unavailable response. Do not work around this by running `db:push`,
@@ -21,6 +23,39 @@ to GitHub. Do not upload `uploads`, build output, or local credentials.
 - The pnpm lifecycle-build allowlist is in `pnpm-workspace.yaml` and covers Prisma
   and bcrypt. It does not blanket-enable arbitrary dependency installation scripts.
   Keep dev dependencies available during builds so Prisma CLI and TypeScript exist.
+
+### Initial database migration (separate approval required)
+
+`apps/api/prisma/migrations/20261011000000_initial/migration.sql` is generated from
+the complete current schema, including enums, tables, indexes and foreign keys.
+It creates structure only: no accounts, products, categories, shipping configuration
+or other seed data. A fresh database will not contain the existing catalog.
+
+- `pnpm --filter @bamora/api db:validate` validates the schema offline.
+- `pnpm --filter @bamora/api db:migration:check` compares the initial SQL with a
+  fresh offline Prisma diff from an empty schema. While this is the only migration,
+  it detects any schema changes not reflected in that initial migration. When
+  adding later migrations, replace this check with validation of the full history;
+  never rewrite an already applied migration.
+- `pnpm --filter @bamora/api build` generates Prisma Client before compiling.
+  The API `typecheck` script also generates the client before checking types.
+  Generation and validation use a temporary schema copy and a non-secret dummy URL;
+  they do not read project `.env` files or connect to a database.
+- The tests apply the SQL to disposable in-memory PostgreSQL using PGlite, never
+  to `DATABASE_URL`. They verify tables, columns, enum values, indexes, foreign keys
+  and readiness failures.
+
+For a genuinely empty, separately authorized database, the explicit deployment
+command is `pnpm --filter @bamora/api db:migrate:deploy`. **This writes schema and
+migration history and must not be run without approval.** It is deliberately absent
+from Render's build/start commands. Do not use `migrate dev`, `db push` or seed as
+deployment shortcuts.
+
+For the existing Supabase database with project tables, **do not apply this initial
+migration blindly**. First obtain an authorized backup and a read-only schema
+comparison. If it already matches, a separately approved Prisma baseline is needed;
+if it differs, plan and approve a non-destructive reconciliation before baselining.
+No database has been baselined, migrated, seeded or externally verified by this work.
 
 ## API on Render
 
@@ -32,7 +67,7 @@ Automatic deployments are disabled in the Blueprint.
 | Setting | Value |
 | --- | --- |
 | Node | 22 |
-| Build Command | `corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @bamora/api db:generate && pnpm --filter @bamora/api build` |
+| Build Command | `corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @bamora/api build` |
 | Start Command | `pnpm --filter @bamora/api start` |
 | Health Check Path | `/api/health/ready` |
 | Persistent disk mount | `/var/data/bamora/uploads` |
@@ -71,7 +106,8 @@ according to their providers' policies.
 ### API checks after an authorized deployment
 
 1. `GET /api/health`: process liveness, no database query.
-2. `GET /api/health/ready`: read-only `SELECT 1`, returns 503 if unavailable.
+2. `GET /api/health/ready`: zero-row, read-only checks of all Prisma model tables and
+   scalar columns, returns 503 if connectivity/schema/read permissions are unavailable.
 3. Read the public catalog and categories to verify actual table compatibility.
 4. Check allowed frontend Origin response headers; unrelated origins must not receive
    `Access-Control-Allow-Origin`. Non-browser clients are still governed by API auth.
@@ -171,8 +207,9 @@ pnpm typecheck
 pnpm build
 ```
 
-Tests use mocks for database/provider boundaries. Builds generate local output; they
-do not start the API, run migrations, seed data or submit payments. Existing native
+Tests use mocks for database/provider boundaries and disposable in-memory PostgreSQL
+for migration/readiness verification. Builds generate local output; they do not start
+the API, run migrations on a configured database, seed data or submit payments. Existing native
 Android/Capacitor source is unchanged and is not validated by these web/API builds.
 
 ### Verification performed during preparation

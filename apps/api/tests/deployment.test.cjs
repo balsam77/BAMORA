@@ -131,9 +131,9 @@ test("production schema checks read only and reject missing columns", async () =
 });
 
 test("readiness reports unavailable DB without exposing error details", async () => {
-  const ready = new HealthController({ $queryRaw: async () => [1] });
+  const ready = new HealthController({ $queryRawUnsafe: async () => [1] });
   assert.deepEqual(await ready.ready(), { status: "ok", service: "bamora-api", database: "connected" });
-  const unavailable = new HealthController({ $queryRaw: async () => { throw new Error("private database details"); } });
+  const unavailable = new HealthController({ $queryRawUnsafe: async () => { throw new Error("private database details"); } });
   await assert.rejects(() => unavailable.ready(), /Database is unavailable/);
 });
 

@@ -1,5 +1,6 @@
 import { Controller, Get, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { databaseReadinessQuery } from "../prisma/database-readiness";
 
 @Controller("api/health")
 export class HealthController {
@@ -19,10 +20,10 @@ export class HealthController {
   @Get("ready")
   async ready() {
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      await this.prisma.$queryRawUnsafe(databaseReadinessQuery);
     } catch {
-      this.logger.error("Database readiness check failed.");
-      throw new ServiceUnavailableException("Database is unavailable.");
+      this.logger.error("Database readiness check failed: connectivity, schema or read permissions are unavailable.");
+      throw new ServiceUnavailableException("Database is unavailable or its schema is incompatible.");
     }
     return { status: "ok", service: "bamora-api", database: "connected" };
   }

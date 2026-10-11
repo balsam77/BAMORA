@@ -10,7 +10,9 @@ This NestJS app now includes complete endpoint scaffolding for customer, merchan
 ## Runtime
 
 - Dev: `pnpm --filter @bamora/api dev`
-- Typecheck: `pnpm --filter @bamora/api exec tsc --noEmit`
+- Typecheck: `pnpm --filter @bamora/api typecheck` (generates Prisma Client offline first)
+- Build: `pnpm --filter @bamora/api build` (generates Prisma Client offline first)
+- Start: `pnpm --filter @bamora/api start`
 
 Default port is `4001`.
 
@@ -25,6 +27,7 @@ Default port is `4001`.
 
 - Health
   - `GET /api/health`
+  - `GET /api/health/ready` (read-only table/column and connection checks; 503 on failure)
 
 - Auth
   - `POST /api/auth/signup`
@@ -92,6 +95,12 @@ Default port is `4001`.
 - Prisma schema is already defined in `prisma/schema.prisma` with users, merchants, products, variants, inventory, orders, payment, and shipping models.
 - Current API uses `AuthRepository` and `CommerceRepository` backed by Prisma.
 - The old mock service remains in the source but is not the active API data layer.
+- A complete initial PostgreSQL migration is in `prisma/migrations`.
+- `db:validate` and `db:migration:check` run offline without loading project `.env`.
+- `db:migrate:deploy` is an explicit, database-writing deployment command, not part
+  of build or startup. It requires separate approval. Existing databases need a
+  reviewed baseline/reconciliation, not blind execution of the initial migration.
+- Migration tests use disposable in-memory PostgreSQL, not the configured database.
 
 ## Future Payment/Shipping Integrations
 
