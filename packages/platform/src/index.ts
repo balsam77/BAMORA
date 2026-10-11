@@ -1,11 +1,52 @@
 export type AppRole = "customer" | "merchant" | "super-admin";
 export type MerchantOrderStatus = "new" | "preparing" | "shipped" | "delivered" | "canceled";
-export type MerchantApprovalStatus = "pending" | "approved" | "rejected" | "suspended";
+export type MerchantApprovalStatus = "pending" | "active" | "rejected" | "suspended";
 export type DataSourceMode = "mock" | "api";
 
 export const ROLE_KEY = "bamoraUserRole";
 export const MERCHANT_NAME_KEY = "bamoraMerchantName";
 export const ADMIN_NAME_KEY = "bamoraAdminName";
+
+export type MerchantRegistrationPayload = {
+  businessName: string;
+  email: string;
+  phone: string;
+  nationalId: string;
+};
+
+export type MerchantLoginPayload = {
+  email: string;
+  password: string;
+  loginCode: string;
+};
+
+export type AdminLoginPayload = {
+  email: string;
+  password: string;
+};
+
+export type MerchantPlanChoice = "monthly_subscription" | "bamora_commission" | "ten_order_limit";
+export type MerchantPlanApproval = "none" | "pending_plan_approval" | "active" | "rejected";
+export type MerchantSubscriptionStatus = "pending" | "active" | "expired";
+export type MerchantAttentionStatus = "normal" | "pending_review" | "pending_bamora_payment" | "delayed";
+
+export type MerchantPlanRecord = {
+  id?: string;
+  selectedPlan: MerchantPlanChoice | null;
+  approvalStatus: MerchantPlanApproval;
+  subscriptionPaymentStatus: MerchantSubscriptionStatus;
+  monthlySubscriptionAmount: string;
+  commissionRate: string;
+  tenOrderLimit: number;
+  tenOrderCycleCount: number;
+  bamoraFeesOwed: string;
+  bamoraFeesPaid: string;
+  outstandingBalance: string;
+  blocked: boolean;
+  notes: string;
+  requestedAt?: string;
+  approvedAt?: string;
+};
 
 export type MerchantProduct = {
   id: string;
@@ -21,12 +62,26 @@ export type MerchantProduct = {
 
 export type MerchantProductInput = Omit<MerchantProduct, "id">;
 
+export type MerchantOrderItemRecord = {
+  id: string;
+  title: string;
+  quantity: number;
+  size: string;
+  color: string;
+  unitPrice: string;
+  imageUrl?: string;
+};
+
 export type MerchantOrder = {
   id: string;
   customer: string;
   status: MerchantOrderStatus;
   total: string;
   createdAt: string;
+  bamoraFee?: string;
+  paymentStatus?: string;
+  attentionState?: MerchantAttentionStatus;
+  items?: MerchantOrderItemRecord[];
 };
 
 export type MerchantNotification = {
@@ -48,14 +103,21 @@ export type MerchantDashboardData = {
   orders: MerchantOrder[];
   notifications: MerchantNotification[];
   stats: MerchantStats;
+  plan: MerchantPlanRecord;
 };
 
 export type MerchantRecord = {
   id: string;
   name: string;
+  email?: string;
   status: MerchantApprovalStatus;
   orders: number;
   revenue: string;
+  selectedPlan?: MerchantPlanChoice | null;
+  planApprovalStatus?: MerchantPlanApproval;
+  outstandingBalance?: string;
+  pendingReviewOrders?: number;
+  delayedOrders?: number;
 };
 
 export type AdminProductRecord = {
@@ -66,12 +128,84 @@ export type AdminProductRecord = {
   price: string;
 };
 
+export type AdminOrderItemRecord = {
+  id: string;
+  title: string;
+  quantity: number;
+  size: string;
+  color: string;
+  unitPrice: string;
+  imageUrl?: string;
+};
+
 export type AdminOrderRecord = {
   id: string;
   merchant: string;
   customer: string;
   status: MerchantOrderStatus;
   total: string;
+  createdAt?: string;
+  bamoraFee?: string;
+  paymentStatus?: string;
+  attentionState?: MerchantAttentionStatus;
+  merchantContactName?: string;
+  merchantPhone?: string;
+  merchantAddress?: string;
+  merchantMapsUrl?: string;
+  customerName?: string;
+  customerPhone?: string;
+  shippingAddress?: string;
+  paymentMethod?: string;
+  shipmentStatus?: string;
+  trackingNumber?: string;
+  preparedAt?: string;
+  pickedUpAt?: string;
+  deliveredAt?: string;
+  notes?: string;
+  items?: AdminOrderItemRecord[];
+};
+
+export type PlanApprovalRecord = {
+  id: string;
+  merchantId: string;
+  merchant: string;
+  email: string;
+  selectedPlan: MerchantPlanChoice | null;
+  approvalStatus: MerchantPlanApproval;
+  requestedAt: string;
+  notes: string;
+};
+
+export type BamoraFeeRecord = {
+  id: string;
+  merchantId: string;
+  merchant: string;
+  orderNumber: string;
+  orderAmount: string;
+  bamoraFee: string;
+  paymentStatus: string;
+  plan: MerchantPlanChoice;
+  createdAt: string;
+};
+
+export type AdminAlertRecord = {
+  id: string;
+  level: string;
+  title: string;
+  body: string;
+  merchant: string;
+  orderNumber: string;
+  createdAt: string;
+};
+
+export type MerchantActivityRecord = {
+  id: string;
+  merchant: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  details: string;
+  createdAt: string;
 };
 
 export type CategoryRecord = {
@@ -84,6 +218,8 @@ export type CategoryRecord = {
 
 export type PlatformStats = {
   merchantCount: number;
+  customerCount: number;
+  subscriberCount: number;
   dailyOrders: number;
   monthlyOrders: number;
   platformRevenue: string;
@@ -135,6 +271,11 @@ export type AdminDashboardData = {
   supportTickets: SupportTicketRecord[];
   broadcasts: BroadcastRecord[];
   offers: GlobalOfferRecord[];
+  pendingPlanApprovals: PlanApprovalRecord[];
+  bamoraFees: BamoraFeeRecord[];
+  delayedOrders: AdminOrderRecord[];
+  alerts: AdminAlertRecord[];
+  merchantActivity: MerchantActivityRecord[];
   stats: PlatformStats;
 };
 
@@ -178,6 +319,8 @@ export type StorefrontProduct = {
   category: string;
   featured: boolean;
   topSelling: boolean;
+  imageUrl?: string;
+  imageUrls?: string[];
 };
 
 export type CustomerCartItem = {
@@ -186,6 +329,8 @@ export type CustomerCartItem = {
   quantity: number;
   size: string;
   color: string;
+  productName?: string;
+  productImageUrl?: string;
 };
 
 export type CustomerOrder = {
@@ -194,6 +339,7 @@ export type CustomerOrder = {
   status: MerchantOrderStatus;
   total: string;
   createdAt: string;
+  items?: MerchantOrderItemRecord[];
 };
 
 export type CustomerNotification = {
@@ -210,6 +356,7 @@ export type CustomerReviewInput = {
 
 export type CustomerAuthPayload = {
   fullName: string;
+  phone?: string;
   email: string;
   password: string;
 };
@@ -245,6 +392,19 @@ function readRuntimeEnv(name: string) {
 
 const API_BASE_URL = readRuntimeEnv("NEXT_PUBLIC_BAMORA_API_URL") ?? "http://localhost:4001";
 
+function resolveApiBaseUrl() {
+  if (typeof window !== "undefined") {
+    const configured = readRuntimeEnv("NEXT_PUBLIC_BAMORA_API_URL");
+    if (configured && configured.trim().length > 0) {
+      return configured;
+    }
+
+    return `${window.location.protocol}//${window.location.hostname}:4001`;
+  }
+
+  return API_BASE_URL;
+}
+
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
@@ -276,6 +436,11 @@ export function clearRoleSession() {
   }
 
   window.localStorage.removeItem(ROLE_KEY);
+  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  window.localStorage.removeItem(AUTH_USER_ID_KEY);
+  window.localStorage.removeItem(AUTH_USER_ROLE_KEY);
+  window.localStorage.removeItem("bamoraMerchantId");
 }
 
 export function hasRoleAccess(role: AppRole | null, scope: AppRole) {
@@ -350,16 +515,30 @@ function buildMerchantDefaults(): MerchantDashboardData {
       conversionRate: "6.4%",
       topProduct: "فستان سهرة مخملي",
     },
+    plan: {
+      selectedPlan: "monthly_subscription",
+      approvalStatus: "active",
+      subscriptionPaymentStatus: "active",
+      monthlySubscriptionAmount: "₪1,000 ILS",
+      commissionRate: "20%",
+      tenOrderLimit: 10,
+      tenOrderCycleCount: 2,
+      bamoraFeesOwed: "₪0 ILS",
+      bamoraFeesPaid: "₪0 ILS",
+      outstandingBalance: "₪0 ILS",
+      blocked: false,
+      notes: "",
+    },
   };
 }
 
 function buildAdminDefaults(): AdminDashboardData {
   return {
     merchants: [
-      { id: "MER-101", name: "Atelier Noir", status: "approved", orders: 110, revenue: "₪182,000" },
-      { id: "MER-102", name: "Golden Stitch", status: "pending", orders: 0, revenue: "₪0" },
-      { id: "MER-103", name: "Velvet Home", status: "suspended", orders: 44, revenue: "₪59,200" },
-      { id: "MER-104", name: "Luna Kids", status: "rejected", orders: 0, revenue: "₪0" },
+      { id: "MER-101", name: "Atelier Noir", email: "atelier@bamora.com", status: "active", orders: 110, revenue: "₪182,000", selectedPlan: "monthly_subscription", planApprovalStatus: "active", outstandingBalance: "₪0 ILS", pendingReviewOrders: 0, delayedOrders: 0 },
+      { id: "MER-102", name: "Golden Stitch", email: "golden@bamora.com", status: "pending", orders: 0, revenue: "₪0", selectedPlan: "bamora_commission", planApprovalStatus: "pending_plan_approval", outstandingBalance: "₪120 ILS", pendingReviewOrders: 0, delayedOrders: 0 },
+      { id: "MER-103", name: "Velvet Home", email: "velvet@bamora.com", status: "suspended", orders: 44, revenue: "₪59,200", selectedPlan: "ten_order_limit", planApprovalStatus: "active", outstandingBalance: "₪640 ILS", pendingReviewOrders: 2, delayedOrders: 1 },
+      { id: "MER-104", name: "Luna Kids", email: "luna@bamora.com", status: "rejected", orders: 0, revenue: "₪0", selectedPlan: null, planApprovalStatus: "none", outstandingBalance: "₪0 ILS", pendingReviewOrders: 0, delayedOrders: 0 },
     ],
     products: [
       { id: "PR-2201", merchant: "Atelier Noir", name: "فستان سهرة حريري", stock: 24, price: "₪620" },
@@ -367,11 +546,11 @@ function buildAdminDefaults(): AdminDashboardData {
       { id: "PR-2304", merchant: "Golden Stitch", name: "بدلة رجالية كحلية", stock: 0, price: "₪1,200" },
     ],
     orders: [
-      { id: "#BMR-91110", merchant: "Atelier Noir", customer: "سارة الخطيب", status: "new", total: "₪1,099" },
-      { id: "#BMR-91044", merchant: "Velvet Home", customer: "ريم عوض", status: "preparing", total: "₪390" },
-      { id: "#BMR-90981", merchant: "Atelier Noir", customer: "ليلى عمر", status: "shipped", total: "₪2,440" },
-      { id: "#BMR-90862", merchant: "Golden Stitch", customer: "نور سالم", status: "delivered", total: "₪780" },
-      { id: "#BMR-90701", merchant: "Velvet Home", customer: "آية حمد", status: "canceled", total: "₪180" },
+      { id: "#BMR-91110", merchant: "Atelier Noir", customer: "سارة الخطيب", customerName: "سارة الخطيب", status: "new", total: "₪1,099", bamoraFee: "₪0 ILS", paymentStatus: "PAID", paymentMethod: "PayPal", attentionState: "normal", createdAt: "2026-07-28 09:15", merchantContactName: "Atelier Noir", merchantPhone: "+972 59-100-1101", merchantAddress: "رام الله - المنطقة الصناعية", customerPhone: "+972 59-401-1101", shippingAddress: "القدس - شارع النجاح 15", merchantMapsUrl: "https://www.google.com/maps/search/?api=1&query=Atelier%20Noir", notes: "جاهز للتأكيد", items: [{ id: "IT-91110-1", title: "فستان سهرة حريري", quantity: 1, size: "M", color: "أسود", unitPrice: "₪620 ILS" }, { id: "IT-91110-2", title: "حقيبة جلد فاخرة", quantity: 1, size: "One Size", color: "بني", unitPrice: "₪479 ILS" }] },
+      { id: "#BMR-91044", merchant: "Velvet Home", customer: "ريم عوض", customerName: "ريم عوض", status: "preparing", total: "₪390", bamoraFee: "₪78 ILS", paymentStatus: "PENDING", paymentMethod: "Cash on Delivery", attentionState: "pending_review", createdAt: "2026-07-28 08:30", preparedAt: "2026-07-28 09:10", merchantContactName: "Velvet Home", merchantPhone: "+972 59-200-2202", merchantAddress: "نابلس - شارع الجامعة", customerPhone: "+972 59-402-2202", shippingAddress: "نابلس - حي رفيديا", merchantMapsUrl: "https://www.google.com/maps/search/?api=1&query=Velvet%20Home", notes: "بانتظار استلام شركة التوصيل", items: [{ id: "IT-91044-1", title: "طقم منزلي", quantity: 2, size: "L", color: "رمادي", unitPrice: "₪195 ILS" }] },
+      { id: "#BMR-90981", merchant: "Atelier Noir", customer: "ليلى عمر", customerName: "ليلى عمر", status: "shipped", total: "₪2,440", bamoraFee: "₪0 ILS", paymentStatus: "PAID", paymentMethod: "Visa", attentionState: "normal", createdAt: "2026-07-27 16:10", preparedAt: "2026-07-27 18:00", pickedUpAt: "2026-07-27 19:10", shipmentStatus: "IN_TRANSIT", trackingNumber: "TRK-90981", merchantContactName: "Atelier Noir", merchantPhone: "+972 59-100-1101", merchantAddress: "رام الله - المنطقة الصناعية", customerPhone: "+972 59-403-3303", shippingAddress: "بيت لحم - شارع المهد", merchantMapsUrl: "https://www.google.com/maps/search/?api=1&query=Atelier%20Noir", notes: "في طريقه إلى الزبون", items: [{ id: "IT-90981-1", title: "بدلة رسمية", quantity: 2, size: "L", color: "كحلي", unitPrice: "₪1,220 ILS" }] },
+      { id: "#BMR-90862", merchant: "Golden Stitch", customer: "نور سالم", customerName: "نور سالم", status: "delivered", total: "₪780", bamoraFee: "₪156 ILS", paymentStatus: "CONFIRMED", paymentMethod: "Mastercard", attentionState: "normal", createdAt: "2026-07-27 12:40", preparedAt: "2026-07-27 13:15", pickedUpAt: "2026-07-27 14:05", deliveredAt: "2026-07-27 16:45", shipmentStatus: "DELIVERED", trackingNumber: "TRK-90862", merchantContactName: "Golden Stitch", merchantPhone: "+972 59-300-3303", merchantAddress: "الخليل - عين سارة", customerPhone: "+972 59-404-4404", shippingAddress: "الخليل - واد التفاح", merchantMapsUrl: "https://www.google.com/maps/search/?api=1&query=Golden%20Stitch", notes: "تم التسليم بنجاح", items: [{ id: "IT-90862-1", title: "عطر العنبر الشرقي", quantity: 2, size: "One Size", color: "-", unitPrice: "₪390 ILS" }] },
+      { id: "#BMR-90701", merchant: "Velvet Home", customer: "آية حمد", customerName: "آية حمد", status: "canceled", total: "₪180", bamoraFee: "₪36 ILS", paymentStatus: "OVERDUE", paymentMethod: "Cash", attentionState: "delayed", createdAt: "2026-07-26 18:05", merchantContactName: "Velvet Home", merchantPhone: "+972 59-200-2202", merchantAddress: "نابلس - شارع الجامعة", customerPhone: "+972 59-405-5505", shippingAddress: "جنين - الحي الشرقي", merchantMapsUrl: "https://www.google.com/maps/search/?api=1&query=Velvet%20Home", notes: "ألغي قبل الشحن", items: [{ id: "IT-90701-1", title: "طقم مناشف سبا", quantity: 1, size: "One Size", color: "أبيض", unitPrice: "₪180 ILS" }] },
     ],
     categories: [
       { id: "CAT-1", nameAr: "نسائي", slug: "women", icon: "👗", parentId: null },
@@ -419,8 +598,27 @@ function buildAdminDefaults(): AdminDashboardData {
         createdAt: "2026-07-14",
       },
     ],
+    pendingPlanApprovals: [
+      { id: "PLAN-1", merchantId: "MER-102", merchant: "Golden Stitch", email: "golden@bamora.com", selectedPlan: "bamora_commission", approvalStatus: "pending_plan_approval", requestedAt: "2026-07-28 10:10", notes: "" },
+    ],
+    bamoraFees: [
+      { id: "FEE-1", merchantId: "MER-103", merchant: "Velvet Home", orderNumber: "2356", orderAmount: "₪390 ILS", bamoraFee: "₪78 ILS", paymentStatus: "PENDING", plan: "ten_order_limit", createdAt: "2026-07-28 08:30" },
+      { id: "FEE-2", merchantId: "MER-102", merchant: "Golden Stitch", orderNumber: "2357", orderAmount: "₪780 ILS", bamoraFee: "₪156 ILS", paymentStatus: "CONFIRMED", plan: "bamora_commission", createdAt: "2026-07-27 12:40" },
+    ],
+    delayedOrders: [
+      { id: "2356", merchant: "Velvet Home", customer: "ريم عوض", status: "preparing", total: "₪390", bamoraFee: "₪78 ILS", paymentStatus: "PENDING", attentionState: "delayed", createdAt: "2026-07-28 08:30" },
+    ],
+    alerts: [
+      { id: "ALT-1", level: "critical", title: "Delayed merchant sub-order", body: "Sub-order 2356 تجاوز مهلة المعالجة.", merchant: "Velvet Home", orderNumber: "2356", createdAt: "2026-07-28 09:40" },
+    ],
+    merchantActivity: [
+      { id: "ACT-1", merchant: "Velvet Home", action: "SUB_ORDER_DELAYED", entityType: "merchant_sub_order", entityId: "2356", details: "Sub-order 2356 exceeded processing SLA", createdAt: "2026-07-28 09:40" },
+      { id: "ACT-2", merchant: "Golden Stitch", action: "PLAN_REQUESTED", entityType: "merchant_plan", entityId: "PLAN-1", details: "", createdAt: "2026-07-28 10:10" },
+    ],
     stats: {
       merchantCount: 128,
+      customerCount: 512,
+      subscriberCount: 640,
       dailyOrders: 342,
       monthlyOrders: 7940,
       platformRevenue: "₪1,920,300",
@@ -538,7 +736,15 @@ function apiUrl(path: string) {
     return path;
   }
 
-  return `${normalizeBaseUrl(API_BASE_URL)}${path.startsWith("/") ? "" : "/"}${path}`;
+  return `${normalizeBaseUrl(resolveApiBaseUrl())}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+function toPublicAssetUrl(pathOrUrl: string) {
+  if (!pathOrUrl) {
+    return pathOrUrl;
+  }
+
+  return apiUrl(pathOrUrl);
 }
 
 type ApiRequestOptions = {
@@ -550,12 +756,8 @@ async function apiRequest<T>(path: string, init: RequestInit = {}, options: ApiR
   const headers = new Headers(init.headers ?? {});
   headers.set("accept", "application/json");
 
-  if (!headers.has("content-type") && init.body != null) {
+  if (!headers.has("content-type") && init.body != null && !(init.body instanceof FormData)) {
     headers.set("content-type", "application/json");
-  }
-
-  if (options.roleHeader) {
-    headers.set("x-role", options.roleHeader);
   }
 
   const token = readStoredString(ACCESS_TOKEN_KEY);
@@ -646,6 +848,102 @@ function formatIls(value: number | string) {
   })} ILS`;
 }
 
+function normalizePlanChoice(value?: string | null): MerchantPlanChoice | null {
+  if (value === "MONTHLY_SUBSCRIPTION") {
+    return "monthly_subscription";
+  }
+
+  if (value === "BAMORA_COMMISSION") {
+    return "bamora_commission";
+  }
+
+  if (value === "TEN_ORDER_LIMIT") {
+    return "ten_order_limit";
+  }
+
+  return null;
+}
+
+function normalizePlanApproval(value?: string | null): MerchantPlanApproval {
+  if (value === "ACTIVE") {
+    return "active";
+  }
+
+  if (value === "REJECTED") {
+    return "rejected";
+  }
+
+  if (value === "PENDING_PLAN_APPROVAL") {
+    return "pending_plan_approval";
+  }
+
+  return "none";
+}
+
+function normalizeSubscriptionStatus(value?: string | null): MerchantSubscriptionStatus {
+  if (value === "ACTIVE") {
+    return "active";
+  }
+
+  if (value === "EXPIRED") {
+    return "expired";
+  }
+
+  return "pending";
+}
+
+function normalizeAttentionState(value?: string | null): MerchantAttentionStatus {
+  if (value === "PENDING_REVIEW") {
+    return "pending_review";
+  }
+
+  if (value === "PENDING_BAMORA_PAYMENT") {
+    return "pending_bamora_payment";
+  }
+
+  if (value === "DELAYED") {
+    return "delayed";
+  }
+
+  return "normal";
+}
+
+function mapPlanRecord(plan?: {
+  id?: string;
+  selectedPlan?: string | null;
+  approvalStatus?: string | null;
+  subscriptionPaymentStatus?: string | null;
+  monthlySubscriptionAmount?: string | number | null;
+  commissionRate?: string | number | null;
+  tenOrderLimit?: number | null;
+  tenOrderCycleCount?: number | null;
+  bamoraFeesOwed?: string | number | null;
+  bamoraFeesPaid?: string | number | null;
+  outstandingBalance?: string | number | null;
+  blockedAt?: string | Date | null;
+  notes?: string | null;
+  requestedAt?: string | Date | null;
+  approvedAt?: string | Date | null;
+}): MerchantPlanRecord {
+  return {
+    id: plan?.id,
+    selectedPlan: normalizePlanChoice(plan?.selectedPlan),
+    approvalStatus: normalizePlanApproval(plan?.approvalStatus),
+    subscriptionPaymentStatus: normalizeSubscriptionStatus(plan?.subscriptionPaymentStatus),
+    monthlySubscriptionAmount: formatIls(plan?.monthlySubscriptionAmount ?? 1000),
+    commissionRate: `${Number(plan?.commissionRate ?? 0.2) * 100}%`,
+    tenOrderLimit: plan?.tenOrderLimit ?? 10,
+    tenOrderCycleCount: plan?.tenOrderCycleCount ?? 0,
+    bamoraFeesOwed: formatIls(plan?.bamoraFeesOwed ?? 0),
+    bamoraFeesPaid: formatIls(plan?.bamoraFeesPaid ?? 0),
+    outstandingBalance: formatIls(plan?.outstandingBalance ?? 0),
+    blocked: Boolean(plan?.blockedAt),
+    notes: plan?.notes ?? "",
+    requestedAt: plan?.requestedAt ? new Date(plan.requestedAt).toLocaleString("ar-EG") : undefined,
+    approvedAt: plan?.approvedAt ? new Date(plan.approvedAt).toLocaleString("ar-EG") : undefined,
+  };
+}
+
 function saveAuthSession(tokens: {
   accessToken: string;
   refreshToken: string;
@@ -655,6 +953,7 @@ function saveAuthSession(tokens: {
   writeStoredString(REFRESH_TOKEN_KEY, tokens.refreshToken);
   writeStoredString(AUTH_USER_ID_KEY, tokens.user.id);
   writeStoredString(AUTH_USER_ROLE_KEY, tokens.user.role);
+  writeStoredString(ROLE_KEY, tokens.user.role);
 }
 
 function getStoredUserId() {
@@ -684,7 +983,12 @@ function buildId(prefix: string) {
 }
 
 export type MerchantRepository = {
+  registerApplication(input: MerchantRegistrationPayload): Promise<{ merchantId?: string; status: MerchantApprovalStatus; message: string }>;
+  login(input: MerchantLoginPayload): Promise<{ role: "merchant"; email: string }>;
   getDashboard(): Promise<MerchantDashboardData>;
+  getPlan(): Promise<MerchantPlanRecord>;
+  requestPlan(plan: MerchantPlanChoice): Promise<MerchantPlanRecord>;
+  uploadProductImage(file: File): Promise<{ url: string; filename: string }>;
   addProduct(input: MerchantProductInput): Promise<MerchantProduct>;
   updateProduct(id: string, input: MerchantProductInput): Promise<MerchantProduct | null>;
   deleteProduct(id: string): Promise<boolean>;
@@ -692,8 +996,13 @@ export type MerchantRepository = {
 };
 
 export type AdminRepository = {
+  login(input: AdminLoginPayload): Promise<{ role: "super-admin"; email: string }>;
   getDashboard(): Promise<AdminDashboardData>;
   updateMerchantStatus(id: string, status: MerchantApprovalStatus): Promise<MerchantRecord | null>;
+  reviewMerchantPlan(id: string, decision: "approve" | "reject"): Promise<PlanApprovalRecord | null>;
+  confirmBamoraPayment(id: string): Promise<BamoraFeeRecord | null>;
+  reopenMerchant(id: string): Promise<boolean>;
+  resolveAlert(id: string): Promise<boolean>;
   deleteMerchant(id: string): Promise<boolean>;
   deleteProduct(id: string): Promise<boolean>;
   updateOrderStatus(orderId: string, status: MerchantOrderStatus): Promise<AdminOrderRecord | null>;
@@ -776,8 +1085,41 @@ function setCustomerDataset(data: CustomerDashboardData) {
 
 function createMockMerchantRepository(): MerchantRepository {
   return {
+    async registerApplication(input) {
+      writeStoredString(MERCHANT_NAME_KEY, input.businessName);
+      return {
+        merchantId: buildId("MER"),
+        status: "pending",
+        message: "تم إرسال طلب التاجر وبانتظار موافقة الإدارة.",
+      };
+    },
+    async login(input) {
+      writeStoredString(MERCHANT_NAME_KEY, input.email);
+      setCurrentRole("merchant");
+      return { role: "merchant", email: input.email };
+    },
     async getDashboard() {
       return getMerchantDataset();
+    },
+    async getPlan() {
+      return getMerchantDataset().plan;
+    },
+    async requestPlan(plan) {
+      const dashboard = getMerchantDataset();
+      dashboard.plan = {
+        ...dashboard.plan,
+        selectedPlan: plan,
+        approvalStatus: "pending_plan_approval",
+        requestedAt: new Date().toLocaleString("ar-EG"),
+      };
+      setMerchantDataset(dashboard);
+      return dashboard.plan;
+    },
+    async uploadProductImage(file) {
+      return {
+        url: file.name,
+        filename: file.name,
+      };
     },
     async addProduct(input) {
       const dashboard = getMerchantDataset();
@@ -820,6 +1162,11 @@ function createMockMerchantRepository(): MerchantRepository {
 
 function createMockAdminRepository(): AdminRepository {
   return {
+    async login(input) {
+      writeStoredString(ADMIN_NAME_KEY, input.email);
+      setCurrentRole("super-admin");
+      return { role: "super-admin", email: input.email };
+    },
     async getDashboard() {
       return getAdminDataset();
     },
@@ -833,6 +1180,52 @@ function createMockAdminRepository(): AdminRepository {
       target.status = status;
       setAdminDataset(dashboard);
       return target;
+    },
+    async reviewMerchantPlan(id, decision) {
+      const dashboard = getAdminDataset();
+      const target = dashboard.pendingPlanApprovals.find((item) => item.merchantId === id);
+      const merchant = dashboard.merchants.find((item) => item.id === id);
+      if (!target || !merchant) {
+        return null;
+      }
+
+      target.approvalStatus = decision === "approve" ? "active" : "rejected";
+      merchant.planApprovalStatus = target.approvalStatus;
+      if (decision === "approve") {
+        dashboard.pendingPlanApprovals = dashboard.pendingPlanApprovals.filter((item) => item.merchantId !== id);
+      }
+      setAdminDataset(dashboard);
+      return target;
+    },
+    async confirmBamoraPayment(id) {
+      const dashboard = getAdminDataset();
+      const target = dashboard.bamoraFees.find((item) => item.id === id);
+      if (!target) {
+        return null;
+      }
+
+      target.paymentStatus = "CONFIRMED";
+      setAdminDataset(dashboard);
+      return target;
+    },
+    async reopenMerchant(id) {
+      const dashboard = getAdminDataset();
+      const merchant = dashboard.merchants.find((item) => item.id === id);
+      if (!merchant) {
+        return false;
+      }
+
+      merchant.outstandingBalance = "₪0 ILS";
+      merchant.pendingReviewOrders = 0;
+      setAdminDataset(dashboard);
+      return true;
+    },
+    async resolveAlert(id) {
+      const dashboard = getAdminDataset();
+      const before = dashboard.alerts.length;
+      dashboard.alerts = dashboard.alerts.filter((item) => item.id !== id);
+      setAdminDataset(dashboard);
+      return before !== dashboard.alerts.length;
     },
     async deleteMerchant(id) {
       const dashboard = getAdminDataset();
@@ -1102,25 +1495,6 @@ function createMockCustomerRepository(): CustomerRepository {
 }
 
 function createApiMerchantRepository(): MerchantRepository {
-  const resolveMerchantId = async () => {
-    const cached = readStoredString("bamoraMerchantId");
-    if (cached) {
-      return cached;
-    }
-
-    const dashboard = await apiRequest<{ merchantId: string }>(platformApiContracts.merchant.dashboard, undefined, {
-      roleHeader: "merchant",
-    });
-    writeStoredString("bamoraMerchantId", dashboard.merchantId);
-    return dashboard.merchantId;
-  };
-
-  const withMerchantId = async (path: string) => {
-    const merchantId = await resolveMerchantId();
-    const separator = path.includes("?") ? "&" : "?";
-    return `${path}${separator}merchantId=${encodeURIComponent(merchantId)}`;
-  };
-
   const mapMerchantProduct = (product: {
     id: string;
     titleAr: string;
@@ -1138,7 +1512,7 @@ function createApiMerchantRepository(): MerchantRepository {
       quantity,
       sizes: Array.from(new Set(product.variants.map((variant) => variant.size))),
       colors: Array.from(new Set(product.variants.map((variant) => variant.color))),
-      images: product.images.map((image) => image.url),
+      images: product.images.map((image) => toPublicAssetUrl(image.url)),
     };
   };
 
@@ -1147,20 +1521,111 @@ function createApiMerchantRepository(): MerchantRepository {
     status: string;
     subtotal: string | number;
     createdAt: string;
+    attentionState?: string;
+    bamoraCharge?: { bamoraFee?: string | number; paymentStatus?: string } | null;
     order: { orderNumber: string; customer: { user: { email: string } } };
+    items?: Array<{
+      quantity: number;
+      orderItem: {
+        id: string;
+        unitPrice: string | number;
+        titleSnapshot: string;
+        imageSnapshot?: string;
+        colorSnapshot: string;
+        sizeSnapshot: string;
+        variant?: { product?: { images?: Array<{ url: string }> } };
+      };
+    }>;
   }): MerchantOrder => ({
     id: subOrder.order.orderNumber || subOrder.id,
     customer: subOrder.order.customer.user.email,
     status: normalizeOrderStatus(subOrder.status),
     total: formatIls(subOrder.subtotal),
     createdAt: new Date(subOrder.createdAt).toLocaleDateString("ar-EG"),
+    bamoraFee: subOrder.bamoraCharge?.bamoraFee != null ? formatIls(subOrder.bamoraCharge.bamoraFee) : undefined,
+    paymentStatus: subOrder.bamoraCharge?.paymentStatus ?? undefined,
+    attentionState: normalizeAttentionState(subOrder.attentionState),
+    items: subOrder.items?.map((entry) => ({
+      id: entry.orderItem.id,
+      title: entry.orderItem.titleSnapshot,
+      quantity: entry.quantity,
+      size: entry.orderItem.sizeSnapshot,
+      color: entry.orderItem.colorSnapshot,
+      unitPrice: formatIls(entry.orderItem.unitPrice),
+      imageUrl:
+        entry.orderItem.imageSnapshot && entry.orderItem.imageSnapshot.trim().length > 0
+          ? toPublicAssetUrl(entry.orderItem.imageSnapshot)
+          : entry.orderItem.variant?.product?.images?.[0]?.url
+            ? toPublicAssetUrl(entry.orderItem.variant.product.images[0].url)
+            : undefined,
+    })),
   });
 
   return {
+    async registerApplication(input) {
+      const result = await apiRequest<{ merchantId?: string; status: "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED"; message: string }>(
+        platformApiContracts.auth.merchantRegister,
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        },
+        { skipAuth: true },
+      );
+
+      writeStoredString(MERCHANT_NAME_KEY, input.businessName);
+
+      return {
+        merchantId: result.merchantId,
+        status:
+          result.status === "ACTIVE"
+            ? "active"
+            : result.status === "REJECTED"
+              ? "rejected"
+              : result.status === "SUSPENDED"
+                ? "suspended"
+                : "pending",
+        message: result.message,
+      };
+    },
+    async login(input) {
+      const result = await apiRequest<{
+        accessToken: string;
+        refreshToken: string;
+        user: { id: string; role: "customer" | "merchant" | "super-admin" };
+      }>(
+        platformApiContracts.auth.merchantLogin,
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        },
+        { skipAuth: true },
+      );
+
+      saveAuthSession(result);
+      writeStoredString(MERCHANT_NAME_KEY, input.email);
+      return { role: "merchant", email: input.email };
+    },
     async getDashboard() {
-      const endpoint = await withMerchantId(platformApiContracts.merchant.dashboard);
       const payload = await apiRequest<{
         merchantId: string;
+        profile?: { businessName?: string; email?: string; status?: string };
+        plan?: {
+          id?: string;
+          selectedPlan?: string | null;
+          approvalStatus?: string | null;
+          subscriptionPaymentStatus?: string | null;
+          monthlySubscriptionAmount?: string | number | null;
+          commissionRate?: string | number | null;
+          tenOrderLimit?: number | null;
+          tenOrderCycleCount?: number | null;
+          bamoraFeesOwed?: string | number | null;
+          bamoraFeesPaid?: string | number | null;
+          outstandingBalance?: string | number | null;
+          blockedAt?: string | null;
+          notes?: string | null;
+          requestedAt?: string | null;
+          approvedAt?: string | null;
+        };
         products: Array<{
           id: string;
           titleAr: string;
@@ -1172,13 +1637,32 @@ function createApiMerchantRepository(): MerchantRepository {
           status: string;
           subtotal: string | number;
           createdAt: string;
+          attentionState?: string;
+          bamoraCharge?: { bamoraFee?: string | number; paymentStatus?: string } | null;
           order: { orderNumber: string; customer: { user: { email: string } } };
+          items?: Array<{
+            quantity: number;
+            orderItem: {
+              id: string;
+              unitPrice: string | number;
+              titleSnapshot: string;
+              imageSnapshot?: string;
+              colorSnapshot: string;
+              sizeSnapshot: string;
+              variant?: { product?: { images?: Array<{ url: string }> } };
+            };
+          }>;
         }>;
         inventory?: { alerts?: Array<{ id: string; quantity: number; threshold: number }>; lowStock?: Array<{ id: string; quantity: number }> };
         stats?: { newOrders?: number; revenue?: string | number };
-      }>(endpoint, undefined, { roleHeader: "merchant" });
+      }>(platformApiContracts.merchant.dashboard);
 
       writeStoredString("bamoraMerchantId", payload.merchantId);
+      if (payload.profile?.businessName) {
+        writeStoredString(MERCHANT_NAME_KEY, payload.profile.businessName);
+      } else if (payload.profile?.email) {
+        writeStoredString(MERCHANT_NAME_KEY, payload.profile.email);
+      }
       const products = payload.products.map(mapMerchantProduct);
       const orders = payload.orders.map(mapMerchantOrder);
       const alerts = payload.inventory?.alerts ?? [];
@@ -1201,10 +1685,70 @@ function createApiMerchantRepository(): MerchantRepository {
         orders,
         notifications,
         stats,
+        plan: mapPlanRecord(payload.plan),
+      };
+    },
+    async getPlan() {
+      const plan = await apiRequest<{
+        id?: string;
+        selectedPlan?: string | null;
+        approvalStatus?: string | null;
+        subscriptionPaymentStatus?: string | null;
+        monthlySubscriptionAmount?: string | number | null;
+        commissionRate?: string | number | null;
+        tenOrderLimit?: number | null;
+        tenOrderCycleCount?: number | null;
+        bamoraFeesOwed?: string | number | null;
+        bamoraFeesPaid?: string | number | null;
+        outstandingBalance?: string | number | null;
+        blockedAt?: string | null;
+        notes?: string | null;
+        requestedAt?: string | null;
+        approvedAt?: string | null;
+      }>(platformApiContracts.merchant.plan);
+      return mapPlanRecord(plan);
+    },
+    async requestPlan(plan) {
+      const payload = await apiRequest<{
+        id?: string;
+        selectedPlan?: string | null;
+        approvalStatus?: string | null;
+        subscriptionPaymentStatus?: string | null;
+        monthlySubscriptionAmount?: string | number | null;
+        commissionRate?: string | number | null;
+        tenOrderLimit?: number | null;
+        tenOrderCycleCount?: number | null;
+        bamoraFeesOwed?: string | number | null;
+        bamoraFeesPaid?: string | number | null;
+        outstandingBalance?: string | number | null;
+        blockedAt?: string | null;
+        notes?: string | null;
+        requestedAt?: string | null;
+        approvedAt?: string | null;
+      }>(platformApiContracts.merchant.plan, {
+        method: "POST",
+        body: JSON.stringify({ plan }),
+      });
+      return mapPlanRecord(payload);
+    },
+    async uploadProductImage(file) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const uploaded = await apiRequest<{ url: string; filename: string }>(
+        platformApiContracts.merchant.uploads,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+
+      return {
+        url: toPublicAssetUrl(uploaded.url),
+        filename: uploaded.filename,
       };
     },
     async addProduct(input) {
-      const merchantId = await resolveMerchantId();
       const created = await apiRequest<{
         id: string;
         titleAr: string;
@@ -1215,7 +1759,6 @@ function createApiMerchantRepository(): MerchantRepository {
         {
           method: "POST",
           body: JSON.stringify({
-            merchantId,
             name: input.name,
             stock: input.quantity,
             price: String(parseCurrencyNumber(input.price)),
@@ -1224,13 +1767,11 @@ function createApiMerchantRepository(): MerchantRepository {
             colors: input.colors,
           }),
         },
-        { roleHeader: "merchant" },
       );
 
       return mapMerchantProduct(created);
     },
     async updateProduct(id, input) {
-      const merchantId = await resolveMerchantId();
       const updated = await apiRequest<{
         id: string;
         titleAr: string;
@@ -1241,7 +1782,6 @@ function createApiMerchantRepository(): MerchantRepository {
         {
           method: "PATCH",
           body: JSON.stringify({
-            merchantId,
             name: input.name,
             stock: input.quantity,
             price: String(parseCurrencyNumber(input.price)),
@@ -1250,29 +1790,21 @@ function createApiMerchantRepository(): MerchantRepository {
             colors: input.colors,
           }),
         },
-        { roleHeader: "merchant" },
       );
 
       return mapMerchantProduct(updated);
     },
     async deleteProduct(id) {
-      const endpoint = await withMerchantId(`${platformApiContracts.merchant.products}/${id}`);
-      const response = await apiRequest<{ deleted: boolean }>(
-        endpoint,
-        { method: "DELETE" },
-        { roleHeader: "merchant" },
-      );
+      const response = await apiRequest<{ deleted: boolean }>(`${platformApiContracts.merchant.products}/${id}`, { method: "DELETE" });
       return Boolean(response.deleted);
     },
     async updateOrderStatus(orderId, status) {
-      const endpoint = await withMerchantId(`${platformApiContracts.merchant.orders}/${orderId}/status`);
       const updated = await apiRequest<{ id: string; status: string; total?: string | number }>(
-        endpoint,
+        `${platformApiContracts.merchant.orders}/${orderId}/status`,
         {
           method: "PATCH",
           body: JSON.stringify({ status: toApiOrderStatus(status) }),
         },
-        { roleHeader: "merchant" },
       );
 
       return {
@@ -1287,17 +1819,32 @@ function createApiMerchantRepository(): MerchantRepository {
 }
 
 function createApiAdminRepository(): AdminRepository {
-  const mapMerchant = (merchant: { id: string; user?: { email: string }; status: string }): MerchantRecord => ({
+  const mapMerchant = (merchant: {
+    id: string;
+    businessName?: string;
+    user?: { email: string };
+    status: string;
+    plan?: { selectedPlan?: string | null; approvalStatus?: string | null; outstandingBalance?: string | number | null } | null;
+    merchantSubOrders?: Array<{ attentionState?: string; subtotal?: string | number }>;
+  }): MerchantRecord => ({
     id: merchant.id,
-    name: merchant.user?.email ?? merchant.id,
+    name: merchant.businessName ?? merchant.user?.email ?? merchant.id,
+    email: merchant.user?.email ?? "",
     status:
-      merchant.status === "APPROVED"
-        ? "approved"
+      merchant.status === "ACTIVE"
+        ? "active"
+        : merchant.status === "REJECTED"
+          ? "rejected"
         : merchant.status === "SUSPENDED"
           ? "suspended"
           : "pending",
-    orders: 0,
-    revenue: "₪0",
+    orders: merchant.merchantSubOrders?.length ?? 0,
+    revenue: formatIls((merchant.merchantSubOrders ?? []).reduce((sum, item) => sum + Number(item.subtotal ?? 0), 0)),
+    selectedPlan: normalizePlanChoice(merchant.plan?.selectedPlan),
+    planApprovalStatus: normalizePlanApproval(merchant.plan?.approvalStatus),
+    outstandingBalance: formatIls(merchant.plan?.outstandingBalance ?? 0),
+    pendingReviewOrders: merchant.merchantSubOrders?.filter((item) => normalizeAttentionState(item.attentionState) === "pending_review").length ?? 0,
+    delayedOrders: merchant.merchantSubOrders?.filter((item) => normalizeAttentionState(item.attentionState) === "delayed").length ?? 0,
   });
 
   const mapAdminProduct = (product: {
@@ -1318,15 +1865,78 @@ function createApiAdminRepository(): AdminRepository {
     orderNumber?: string;
     status: string;
     total: string | number;
-    customer?: { user?: { email: string } };
-    subOrders?: Array<{ merchant?: { user?: { email: string } } }>;
-  }): AdminOrderRecord => ({
-    id: order.orderNumber ?? order.id,
-    merchant: order.subOrders?.[0]?.merchant?.user?.email ?? "-",
-    customer: order.customer?.user?.email ?? "-",
-    status: normalizeOrderStatus(order.status),
-    total: formatIls(order.total),
-  });
+    createdAt?: string;
+    shippingName?: string;
+    shippingPhone?: string;
+    shippingCity?: string;
+    shippingStreet?: string;
+    customer?: { user?: { email: string; phone?: string | null } };
+    payment?: { provider?: string; status?: string } | null;
+    items?: Array<{
+      id: string;
+      quantity: number;
+      unitPrice: string | number;
+      titleSnapshot: string;
+        imageSnapshot?: string;
+      colorSnapshot: string;
+      sizeSnapshot: string;
+      variant?: { product?: { images?: Array<{ url: string }> } };
+    }>;
+    statusHistory?: Array<{ status: string; note?: string | null; createdAt: string }>;
+    subOrders?: Array<{
+      merchant?: { businessName?: string; user?: { email: string; phone?: string | null } };
+      attentionState?: string;
+      shipment?: { status?: string; trackingNumber?: string; createdAt?: string; shippedAt?: string | null; deliveredAt?: string | null } | null;
+      bamoraCharge?: { bamoraFee?: string | number; paymentStatus?: string } | null;
+    }>;
+  }): AdminOrderRecord => {
+    const primarySubOrder = order.subOrders?.[0];
+    const merchantName = primarySubOrder?.merchant?.businessName ?? primarySubOrder?.merchant?.user?.email ?? "-";
+    const createdAt = order.createdAt ? new Date(order.createdAt).toLocaleString("ar-EG") : undefined;
+    const preparedAt = order.statusHistory?.find((entry) => entry.status === "PROCESSING" || entry.status === "CONFIRMED")?.createdAt;
+    const shippedAt = primarySubOrder?.shipment?.shippedAt ?? primarySubOrder?.shipment?.createdAt;
+    const deliveredAt = primarySubOrder?.shipment?.deliveredAt;
+
+    return {
+      id: order.orderNumber ?? order.id,
+      merchant: merchantName,
+      customer: order.customer?.user?.email ?? order.shippingName ?? "-",
+      customerName: order.shippingName ?? order.customer?.user?.email ?? "-",
+      status: normalizeOrderStatus(order.status),
+      total: formatIls(order.total),
+      createdAt,
+      bamoraFee: primarySubOrder?.bamoraCharge?.bamoraFee != null ? formatIls(primarySubOrder.bamoraCharge?.bamoraFee ?? 0) : undefined,
+      paymentStatus: primarySubOrder?.bamoraCharge?.paymentStatus ?? order.payment?.status ?? undefined,
+      attentionState: normalizeAttentionState(primarySubOrder?.attentionState),
+      merchantContactName: merchantName,
+      merchantPhone: primarySubOrder?.merchant?.user?.phone ?? undefined,
+      merchantAddress: undefined,
+      merchantMapsUrl: merchantName !== "-" ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(merchantName)}` : undefined,
+      customerPhone: order.shippingPhone ?? order.customer?.user?.phone ?? undefined,
+      shippingAddress: [order.shippingStreet, order.shippingCity].filter(Boolean).join(" - ") || undefined,
+      paymentMethod: order.payment?.provider ?? undefined,
+      shipmentStatus: primarySubOrder?.shipment?.status ?? undefined,
+      trackingNumber: primarySubOrder?.shipment?.trackingNumber ?? undefined,
+      preparedAt: preparedAt ? new Date(preparedAt).toLocaleString("ar-EG") : undefined,
+      pickedUpAt: shippedAt ? new Date(shippedAt).toLocaleString("ar-EG") : undefined,
+      deliveredAt: deliveredAt ? new Date(deliveredAt).toLocaleString("ar-EG") : undefined,
+      notes: order.statusHistory?.at(-1)?.note ?? undefined,
+      items: order.items?.map((item) => ({
+        id: item.id,
+        title: item.titleSnapshot,
+        quantity: item.quantity,
+        size: item.sizeSnapshot,
+        color: item.colorSnapshot,
+        unitPrice: formatIls(item.unitPrice),
+        imageUrl:
+          item.imageSnapshot && item.imageSnapshot.trim().length > 0
+            ? toPublicAssetUrl(item.imageSnapshot)
+            : item.variant?.product?.images?.[0]?.url
+              ? toPublicAssetUrl(item.variant.product.images[0].url)
+              : undefined,
+      })),
+    };
+  };
 
   const mapCategory = (category: { id: string; nameAr: string; slug: string; parentId?: string | null }): CategoryRecord => ({
     id: category.id,
@@ -1346,10 +1956,35 @@ function createApiAdminRepository(): AdminRepository {
   });
 
   return {
+    async login(input) {
+      const result = await apiRequest<{
+        accessToken: string;
+        refreshToken: string;
+        user: { id: string; role: "customer" | "merchant" | "super-admin" };
+      }>(
+        platformApiContracts.auth.adminLogin,
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        },
+        { skipAuth: true },
+      );
+
+      saveAuthSession(result);
+      writeStoredString(ADMIN_NAME_KEY, input.email);
+      return { role: "super-admin", email: input.email };
+    },
     async getDashboard() {
-      const [dashboard, supportTickets] = await Promise.all([
+      const [dashboard, supportTickets, delayedOrders] = await Promise.all([
         apiRequest<{
-          merchants: Array<{ id: string; status: string; user?: { email: string } }>;
+          merchants: Array<{
+            id: string;
+            businessName?: string;
+            status: string;
+            user?: { email: string };
+            plan?: { selectedPlan?: string | null; approvalStatus?: string | null; outstandingBalance?: string | number | null } | null;
+            merchantSubOrders?: Array<{ attentionState?: string; subtotal?: string | number }>;
+          }>;
           products: Array<{
             id: string;
             titleAr: string;
@@ -1361,18 +1996,76 @@ function createApiAdminRepository(): AdminRepository {
             orderNumber?: string;
             status: string;
             total: string | number;
+            createdAt?: string;
             customer?: { user?: { email: string } };
-            subOrders?: Array<{ merchant?: { user?: { email: string } } }>;
+            subOrders?: Array<{
+              merchant?: { user?: { email: string } };
+              attentionState?: string;
+              bamoraCharge?: { bamoraFee?: string | number; paymentStatus?: string } | null;
+            }>;
           }>;
           categories: Array<{ id: string; nameAr: string; slug: string; parentId?: string | null }>;
           users: Array<{ id: string; email: string; role: string; status: string; createdAt: string }>;
-          stats: { merchantCount: number; orderCount: number; productCount: number; userCount: number; platformRevenue: string | number };
-        }>(platformApiContracts.admin.dashboard, undefined, { roleHeader: "super-admin" }),
-        apiRequest<Array<{ id: string; title: string; body: string; createdAt: string }>>(
-          platformApiContracts.admin.supportTickets,
-          undefined,
-          { roleHeader: "super-admin" },
-        ),
+          planApprovals: Array<{
+            id: string;
+            selectedPlan?: string | null;
+            approvalStatus?: string | null;
+            requestedAt?: string;
+            notes?: string | null;
+            merchant: { id: string; businessName?: string; user?: { email: string } };
+          }>;
+          bamoraCharges: Array<{
+            id: string;
+            planType: string;
+            orderAmount: string | number;
+            bamoraFee: string | number;
+            paymentStatus: string;
+            createdAt: string;
+            order?: { orderNumber?: string };
+            merchant: { id: string; businessName?: string; user?: { email: string } };
+          }>;
+          adminAlerts: Array<{
+            id: string;
+            level: string;
+            title: string;
+            body: string;
+            createdAt: string;
+            merchant?: { businessName?: string; user?: { email: string } } | null;
+            order?: { orderNumber?: string } | null;
+          }>;
+          merchantActivity: Array<{
+            id: string;
+            action: string;
+            entityType: string;
+            entityId?: string | null;
+            details?: string | null;
+            createdAt: string;
+            merchant: { businessName?: string; user?: { email: string } };
+          }>;
+          stats: {
+            merchantCount: number;
+            customerCount?: number;
+            subscriberCount?: number;
+            orderCount: number;
+            productCount: number;
+            userCount: number;
+            platformRevenue: string | number;
+          };
+        }>(platformApiContracts.admin.dashboard),
+        apiRequest<Array<{ id: string; title: string; body: string; createdAt: string }>>(platformApiContracts.admin.supportTickets),
+        apiRequest<Array<{
+          id: string;
+          orderNumber?: string;
+          status: string;
+          total: string | number;
+          createdAt?: string;
+          customer?: { user?: { email: string } };
+          subOrders?: Array<{
+            merchant?: { user?: { email: string } };
+            attentionState?: string;
+            bamoraCharge?: { bamoraFee?: string | number; paymentStatus?: string } | null;
+          }>;
+        }>>(platformApiContracts.admin.delayedOrders),
       ]);
 
       return {
@@ -1391,8 +2084,50 @@ function createApiAdminRepository(): AdminRepository {
         })),
         broadcasts: readStorage<BroadcastRecord[]>("bamoraAdminBroadcastHistory", []),
         offers: readStorage<GlobalOfferRecord[]>("bamoraAdminOfferHistory", []),
+        pendingPlanApprovals: dashboard.planApprovals.map((item) => ({
+          id: item.id,
+          merchantId: item.merchant.id,
+          merchant: item.merchant.businessName ?? item.merchant.user?.email ?? item.merchant.id,
+          email: item.merchant.user?.email ?? "",
+          selectedPlan: normalizePlanChoice(item.selectedPlan),
+          approvalStatus: normalizePlanApproval(item.approvalStatus),
+          requestedAt: item.requestedAt ? new Date(item.requestedAt).toLocaleString("ar-EG") : "-",
+          notes: item.notes ?? "",
+        })),
+        bamoraFees: dashboard.bamoraCharges.map((item) => ({
+          id: item.id,
+          merchantId: item.merchant.id,
+          merchant: item.merchant.businessName ?? item.merchant.user?.email ?? item.merchant.id,
+          orderNumber: item.order?.orderNumber ?? item.id,
+          orderAmount: formatIls(item.orderAmount),
+          bamoraFee: formatIls(item.bamoraFee),
+          paymentStatus: item.paymentStatus,
+          plan: normalizePlanChoice(item.planType) ?? "bamora_commission",
+          createdAt: new Date(item.createdAt).toLocaleString("ar-EG"),
+        })),
+        delayedOrders: delayedOrders.map(mapAdminOrder),
+        alerts: dashboard.adminAlerts.map((item) => ({
+          id: item.id,
+          level: item.level,
+          title: item.title,
+          body: item.body,
+          merchant: item.merchant?.businessName ?? item.merchant?.user?.email ?? "-",
+          orderNumber: item.order?.orderNumber ?? "-",
+          createdAt: new Date(item.createdAt).toLocaleString("ar-EG"),
+        })),
+        merchantActivity: dashboard.merchantActivity.map((item) => ({
+          id: item.id,
+          merchant: item.merchant.businessName ?? item.merchant.user?.email ?? "-",
+          action: item.action,
+          entityType: item.entityType,
+          entityId: item.entityId ?? "-",
+          details: item.details ?? "",
+          createdAt: new Date(item.createdAt).toLocaleString("ar-EG"),
+        })),
         stats: {
           merchantCount: dashboard.stats.merchantCount,
+          customerCount: dashboard.stats.customerCount ?? 0,
+          subscriberCount: dashboard.stats.subscriberCount ?? dashboard.stats.merchantCount + (dashboard.stats.customerCount ?? 0),
           dailyOrders: dashboard.stats.orderCount,
           monthlyOrders: dashboard.stats.orderCount,
           platformRevenue: formatIls(dashboard.stats.platformRevenue),
@@ -1400,31 +2135,78 @@ function createApiAdminRepository(): AdminRepository {
       };
     },
     async updateMerchantStatus(id, status) {
-      const normalizedStatus = status === "rejected" ? "suspended" : status;
       const updated = await apiRequest<{ id: string; status: string; user?: { email: string } }>(
         `${platformApiContracts.admin.merchants}/${id}/status`,
         {
           method: "PATCH",
-          body: JSON.stringify({ status: normalizedStatus }),
+          body: JSON.stringify({ status }),
         },
-        { roleHeader: "super-admin" },
       );
       return mapMerchant(updated);
     },
+    async reviewMerchantPlan(id, decision) {
+      const updated = await apiRequest<{
+        id: string;
+        selectedPlan?: string | null;
+        approvalStatus?: string | null;
+        requestedAt?: string | null;
+        notes?: string | null;
+      }>(`${platformApiContracts.admin.merchants}/${id}/plan`, {
+        method: "PATCH",
+        body: JSON.stringify({ decision }),
+      });
+
+      return {
+        id: updated.id,
+        merchantId: id,
+        merchant: id,
+        email: "",
+        selectedPlan: normalizePlanChoice(updated.selectedPlan),
+        approvalStatus: normalizePlanApproval(updated.approvalStatus),
+        requestedAt: updated.requestedAt ? new Date(updated.requestedAt).toLocaleString("ar-EG") : "-",
+        notes: updated.notes ?? "",
+      };
+    },
+    async confirmBamoraPayment(id) {
+      const updated = await apiRequest<{
+        id: string;
+        planType: string;
+        orderAmount: string | number;
+        bamoraFee: string | number;
+        paymentStatus: string;
+        createdAt: string;
+        order?: { orderNumber?: string };
+        merchant: { id: string; businessName?: string; user?: { email: string } };
+      }>(`${platformApiContracts.admin.bamoraPayments}/${id}/confirm`, {
+        method: "PATCH",
+      });
+
+      return {
+        id: updated.id,
+        merchantId: updated.merchant.id,
+        merchant: updated.merchant.businessName ?? updated.merchant.user?.email ?? updated.merchant.id,
+        orderNumber: updated.order?.orderNumber ?? updated.id,
+        orderAmount: formatIls(updated.orderAmount),
+        bamoraFee: formatIls(updated.bamoraFee),
+        paymentStatus: updated.paymentStatus,
+        plan: normalizePlanChoice(updated.planType) ?? "bamora_commission",
+        createdAt: new Date(updated.createdAt).toLocaleString("ar-EG"),
+      };
+    },
+    async reopenMerchant(id) {
+      await apiRequest(`${platformApiContracts.admin.merchants}/${id}/reopen`, { method: "PATCH" });
+      return true;
+    },
+    async resolveAlert(id) {
+      await apiRequest(`${platformApiContracts.admin.alerts}/${id}/resolve`, { method: "PATCH" });
+      return true;
+    },
     async deleteMerchant(id) {
-      const response = await apiRequest<{ deleted: boolean }>(
-        `${platformApiContracts.admin.merchants}/${id}`,
-        { method: "DELETE" },
-        { roleHeader: "super-admin" },
-      );
+      const response = await apiRequest<{ deleted: boolean }>(`${platformApiContracts.admin.merchants}/${id}`, { method: "DELETE" });
       return Boolean(response.deleted);
     },
     async deleteProduct(id) {
-      const response = await apiRequest<{ deleted: boolean }>(
-        `${platformApiContracts.admin.products}/${id}`,
-        { method: "DELETE" },
-        { roleHeader: "super-admin" },
-      );
+      const response = await apiRequest<{ deleted: boolean }>(`${platformApiContracts.admin.products}/${id}`, { method: "DELETE" });
       return Boolean(response.deleted);
     },
     async updateOrderStatus(orderId, status) {
@@ -1434,7 +2216,6 @@ function createApiAdminRepository(): AdminRepository {
           method: "PATCH",
           body: JSON.stringify({ status: toApiOrderStatus(status) }),
         },
-        { roleHeader: "super-admin" },
       );
 
       return {
@@ -1458,16 +2239,11 @@ function createApiAdminRepository(): AdminRepository {
             parentId: input.parentId,
           }),
         },
-        { roleHeader: "super-admin" },
       );
       return mapCategory(payload);
     },
     async deleteCategory(id) {
-      const response = await apiRequest<{ deleted: boolean }>(
-        `${platformApiContracts.admin.categories}/${id}`,
-        { method: "DELETE" },
-        { roleHeader: "super-admin" },
-      );
+      const response = await apiRequest<{ deleted: boolean }>(`${platformApiContracts.admin.categories}/${id}`, { method: "DELETE" });
       return Boolean(response.deleted);
     },
     async createGlobalOffer(input) {
@@ -1477,7 +2253,6 @@ function createApiAdminRepository(): AdminRepository {
           method: "POST",
           body: JSON.stringify(input),
         },
-        { roleHeader: "super-admin" },
       );
 
       const mapped: GlobalOfferRecord = {
@@ -1498,7 +2273,6 @@ function createApiAdminRepository(): AdminRepository {
           method: "POST",
           body: JSON.stringify(input),
         },
-        { roleHeader: "super-admin" },
       );
       const current = readStorage<BroadcastRecord[]>("bamoraAdminBroadcastHistory", []);
       writeStorage("bamoraAdminBroadcastHistory", [broadcast, ...current]);
@@ -1511,16 +2285,11 @@ function createApiAdminRepository(): AdminRepository {
           method: "PATCH",
           body: JSON.stringify({ status }),
         },
-        { roleHeader: "super-admin" },
       );
       return mapUser(updated);
     },
     async deleteUser(id) {
-      const response = await apiRequest<{ deleted: boolean }>(
-        `${platformApiContracts.admin.users}/${id}`,
-        { method: "DELETE" },
-        { roleHeader: "super-admin" },
-      );
+      const response = await apiRequest<{ deleted: boolean }>(`${platformApiContracts.admin.users}/${id}`, { method: "DELETE" });
       return Boolean(response.deleted);
     },
     async assignSupportTicket(id, assignedTo) {
@@ -1530,7 +2299,6 @@ function createApiAdminRepository(): AdminRepository {
           method: "PATCH",
           body: JSON.stringify({ assignedTo }),
         },
-        { roleHeader: "super-admin" },
       );
       return {
         id: updated.id,
@@ -1548,7 +2316,6 @@ function createApiAdminRepository(): AdminRepository {
           method: "PATCH",
           body: JSON.stringify({ status }),
         },
-        { roleHeader: "super-admin" },
       );
       return {
         id: updated.id,
@@ -1567,10 +2334,17 @@ function createApiCustomerRepository(): CustomerRepository {
     payload: {
       profile: { id: string; fullName: string; email: string; phone?: string | null; locale?: string | null };
       addresses: Array<{ id: string; label: string; line1: string; city: string; isDefault: boolean }>;
-      products: Array<{ id: string; name: string; price: string; stock?: number }>;
+      products: Array<{ id: string; name: string; price: string; stock?: number; images?: string[]; category?: string }>;
       favorites?: string[];
-      cart?: Array<{ id: string; productId: string; quantity: number; size: string; color: string }>;
-      orders?: Array<{ id: string; status: string; total: string; createdAt?: string; productId?: string }>;
+      cart?: Array<{ id: string; productId: string; quantity: number; size: string; color: string; productName?: string; productImageUrl?: string }>;
+      orders?: Array<{
+        id: string;
+        status: string;
+        total: string;
+        createdAt?: string;
+        productId?: string;
+        items?: Array<{ id: string; title: string; quantity: number; size: string; color: string; unitPrice: string; imageUrl?: string }>;
+      }>;
     },
     notifications: Array<{ id: string; title: string; body?: string }> = [],
   ): CustomerDashboardData => {
@@ -1581,9 +2355,11 @@ function createApiCustomerRepository(): CustomerRepository {
       detail: "منتج مميز من BAMORA.",
       reviewCount: 0,
       averageRating: 5,
-      category: "عام",
+      category: product.category?.trim() || "عام",
       featured: index < 3,
       topSelling: index >= 3 && index < 6,
+      imageUrl: product.images?.[0] ? toPublicAssetUrl(product.images[0]) : undefined,
+      imageUrls: (product.images ?? []).map(toPublicAssetUrl),
     }));
 
     const fallbackProductId = products[0]?.id ?? "";
@@ -1592,7 +2368,11 @@ function createApiCustomerRepository(): CustomerRepository {
       addresses: payload.addresses,
       products,
       favoriteIds: payload.favorites ?? [],
-      cart: payload.cart ?? [],
+      cart:
+        payload.cart?.map((item) => ({
+          ...item,
+          productImageUrl: item.productImageUrl ? toPublicAssetUrl(item.productImageUrl) : undefined,
+        })) ?? [],
       orders:
         payload.orders?.map((order) => ({
           id: order.id,
@@ -1600,6 +2380,16 @@ function createApiCustomerRepository(): CustomerRepository {
           status: normalizeOrderStatus(order.status),
           total: formatIls(parseCurrencyNumber(order.total)),
           createdAt: order.createdAt ? new Date(order.createdAt).toLocaleDateString("ar-EG") : new Date().toLocaleDateString("ar-EG"),
+          items:
+            order.items?.map((item) => ({
+              id: item.id,
+              title: item.title,
+              quantity: item.quantity,
+              size: item.size,
+              color: item.color,
+              unitPrice: formatIls(parseCurrencyNumber(item.unitPrice)),
+              imageUrl: item.imageUrl ? toPublicAssetUrl(item.imageUrl) : undefined,
+            })) ?? [],
         })) ?? [],
       notifications: notifications.map((notification) => ({
         id: notification.id,
@@ -1609,24 +2399,25 @@ function createApiCustomerRepository(): CustomerRepository {
     };
   };
 
-  const authHeaders = () => ({ roleHeader: "customer" as const });
-
   return {
     async getDashboard() {
       const [dashboard, notifications] = await Promise.all([
         apiRequest<{
           profile: { id: string; fullName: string; email: string; phone?: string | null; locale?: string | null };
           addresses: Array<{ id: string; label: string; line1: string; city: string; isDefault: boolean }>;
-          products: Array<{ id: string; name: string; price: string; stock?: number }>;
+          products: Array<{ id: string; name: string; price: string; stock?: number; images?: string[]; category?: string }>;
           favorites?: string[];
-          cart?: Array<{ id: string; productId: string; quantity: number; size: string; color: string }>;
-          orders?: Array<{ id: string; status: string; total: string; createdAt?: string; productId?: string }>;
-        }>(platformApiContracts.customer.dashboard, undefined, authHeaders()),
-        apiRequest<Array<{ id: string; title: string; body?: string }>>(
-          platformApiContracts.customer.notifications,
-          undefined,
-          authHeaders(),
-        ),
+          cart?: Array<{ id: string; productId: string; quantity: number; size: string; color: string; productName?: string; productImageUrl?: string }>;
+          orders?: Array<{
+            id: string;
+            status: string;
+            total: string;
+            createdAt?: string;
+            productId?: string;
+            items?: Array<{ id: string; title: string; quantity: number; size: string; color: string; unitPrice: string; imageUrl?: string }>;
+          }>;
+        }>(platformApiContracts.customer.dashboard),
+        apiRequest<Array<{ id: string; title: string; body?: string }>>(platformApiContracts.customer.notifications),
       ]);
 
       return mapDashboard(dashboard, notifications);
@@ -1642,6 +2433,7 @@ function createApiCustomerRepository(): CustomerRepository {
           method: "POST",
           body: JSON.stringify({
             name: payload.fullName,
+            phone: payload.phone ?? "0500000000",
             email: payload.email,
             password: payload.password,
             role: "customer",
@@ -1678,47 +2470,27 @@ function createApiCustomerRepository(): CustomerRepository {
       };
     },
     async upsertAddress(input) {
-      const payload = await apiRequest<CustomerAddress>(
-        platformApiContracts.customer.addresses,
-        {
-          method: "POST",
-          body: JSON.stringify(input),
-        },
-        authHeaders(),
-      );
+      const payload = await apiRequest<CustomerAddress>(platformApiContracts.customer.addresses, {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
       return payload;
     },
     async toggleFavorite(productId) {
-      return apiRequest<string[]>(
-        `${platformApiContracts.customer.favorites}/${productId}/toggle`,
-        { method: "POST" },
-        authHeaders(),
-      );
+      return apiRequest<string[]>(`${platformApiContracts.customer.favorites}/${productId}/toggle`, { method: "POST" });
     },
     async addToCart(input) {
-      return apiRequest<CustomerCartItem>(
-        platformApiContracts.customer.cart,
-        {
-          method: "POST",
-          body: JSON.stringify(input),
-        },
-        authHeaders(),
-      );
+      return apiRequest<CustomerCartItem>(platformApiContracts.customer.cart, {
+        method: "POST",
+        body: JSON.stringify(input),
+      });
     },
     async removeFromCart(cartItemId) {
-      const response = await apiRequest<{ deleted: boolean }>(
-        `${platformApiContracts.customer.cart}/${cartItemId}`,
-        { method: "DELETE" },
-        authHeaders(),
-      );
+      const response = await apiRequest<{ deleted: boolean }>(`${platformApiContracts.customer.cart}/${cartItemId}`, { method: "DELETE" });
       return Boolean(response.deleted);
     },
     async checkout() {
-      const order = await apiRequest<{ id: string; status: string; total: string }>(
-        platformApiContracts.customer.checkout,
-        { method: "POST" },
-        authHeaders(),
-      );
+      const order = await apiRequest<{ id: string; status: string; total: string }>(platformApiContracts.customer.checkout, { method: "POST" });
 
       const dashboard = await this.getDashboard();
       return {
@@ -1736,7 +2508,6 @@ function createApiCustomerRepository(): CustomerRepository {
           method: "POST",
           body: JSON.stringify(input),
         },
-        authHeaders(),
       );
       const dashboard = await this.getDashboard();
       return dashboard.products.find((product) => product.id === input.productId) ?? null;
@@ -1796,6 +2567,9 @@ export const platformApiContracts = {
   auth: {
     signup: "/api/auth/signup",
     login: "/api/auth/login",
+    merchantRegister: "/api/auth/merchant/register",
+    merchantLogin: "/api/auth/merchant/login",
+    adminLogin: "/api/auth/admin/login",
     refresh: "/api/auth/refresh",
   },
   customer: {
@@ -1815,6 +2589,7 @@ export const platformApiContracts = {
     products: "/api/merchant/products",
     orders: "/api/merchant/orders",
     coupons: "/api/merchant/coupons",
+    plan: "/api/merchant/plan",
     uploads: "/api/uploads/images",
   },
   admin: {
@@ -1822,11 +2597,14 @@ export const platformApiContracts = {
     merchants: "/api/admin/merchants",
     products: "/api/admin/products",
     orders: "/api/admin/orders",
+    delayedOrders: "/api/admin/orders/delayed",
+    bamoraPayments: "/api/admin/payments/bamora",
     users: "/api/admin/users",
     supportTickets: "/api/admin/support-tickets",
     offers: "/api/admin/offers",
     broadcasts: "/api/admin/broadcasts",
     categories: "/api/admin/categories",
+    alerts: "/api/admin/alerts",
   },
   integrations: {
     config: "/api/integrations/config",

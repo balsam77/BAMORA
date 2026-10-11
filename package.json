@@ -10,11 +10,14 @@
     "dev:customer": "turbo dev --filter=@bamora/customer",
     "dev:merchant": "turbo dev --filter=@bamora/merchant",
     "dev:admin": "turbo dev --filter=@bamora/admin",
+    "dev:business": "turbo dev --filter=@bamora/business",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3"
   },

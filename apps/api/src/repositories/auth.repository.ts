@@ -5,12 +5,31 @@ import { PrismaService } from "../prisma/prisma.service";
 export class AuthRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly authUserInclude = {
+    merchant: true,
+    adminUser: true,
+  } as const;
+
   findUserByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.prisma.user.findUnique({ where: { email }, include: this.authUserInclude });
   }
 
   findUserById(id: string) {
-    return this.prisma.user.findUnique({ where: { id } });
+    return this.prisma.user.findUnique({ where: { id }, include: this.authUserInclude });
+  }
+
+  findUserByNationalIdHash(nationalIdHash: string) {
+    return this.prisma.user.findUnique({ where: { nationalIdHash }, include: this.authUserInclude });
+  }
+
+  activateMerchantByUserId(userId: string) {
+    return this.prisma.merchant.update({
+      where: { userId },
+      data: {
+        status: "ACTIVE",
+        approvedAt: new Date(),
+      },
+    });
   }
 
   createUser(input: {
@@ -20,11 +39,17 @@ export class AuthRepository {
     firstName?: string;
     lastName?: string;
     businessName?: string;
+    phone?: string;
+    nationalIdHash?: string;
+    nationalIdLast3?: string;
   }) {
     return this.prisma.user.create({
       data: {
         email: input.email,
-        passwordHash: input.passwordHash,
+        phone: input.phone,
+        passwordHash: input.passwordHash ?? null,
+        nationalIdHash: input.nationalIdHash,
+        nationalIdLast3: input.nationalIdLast3,
         role: input.role,
         customer:
           input.role === "CUSTOMER"
@@ -52,6 +77,7 @@ export class AuthRepository {
               }
             : undefined,
       },
+      include: this.authUserInclude,
     });
   }
 
@@ -142,5 +168,21 @@ export class AuthRepository {
 
   updateUserPassword(userId: string, passwordHash: string) {
     return this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  }
+
+  updateMerchantStatus(
+    merchantId: string,
+    data: { status: "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED"; approvedAt: Date | null },
+  ) {
+    return this.prisma.merchant.update({
+      where: { id: merchantId },
+      data: {
+        status: data.status,
+        approvedAt: data.approvedAt,
+      },
+      include: {
+        user: true,
+      },
+    });
   }
 }

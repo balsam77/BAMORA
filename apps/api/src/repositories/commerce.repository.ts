@@ -6,12 +6,22 @@ import { PrismaService } from "../prisma/prisma.service";
 export class CommerceRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  private isMissingTableError(error: unknown) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+
+    return error.code === "P2021" || error.code === "P2022" || error.message.includes("does not exist in the current database");
+  }
+
   get db() {
     return this.prisma;
   }
 
   runInTransaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>) {
-    return this.prisma.$transaction(callback);
+    return this.prisma.$transaction(callback, {
+      timeout: 20000,
+    });
   }
 
   findUserById(userId: string) {
@@ -23,7 +33,7 @@ export class CommerceRepository {
   }
 
   findMerchantByUserId(userId: string) {
-    return this.prisma.merchant.findUnique({ where: { userId } });
+    return this.prisma.merchant.findUnique({ where: { userId }, include: { user: true, plan: true } });
   }
 
   customerDashboard(customerId: string) {
@@ -51,7 +61,11 @@ export class CommerceRepository {
             variant: {
               include: {
                 inventory: true,
-                product: true,
+                product: {
+                  include: {
+                    images: true,
+                  },
+                },
               },
             },
           },
@@ -158,6 +172,68 @@ export class CommerceRepository {
     return this.prisma.shippingZone.findMany({ where: { active: true }, orderBy: { nameAr: "asc" } });
   }
 
+  async ensureDefaultShippingZone() {
+    return this.prisma.shippingZone.upsert({
+      where: { code: "IL" },
+      update: { active: true },
+      create: {
+        code: "IL",
+        nameEn: "Center",
+        nameAr: "الوسط",
+        baseRate: new Prisma.Decimal(10),
+        etaDaysMin: 1,
+        etaDaysMax: 2,
+        active: true,
+      },
+    });
+  }
+
+  async ensureOrderItemImageSnapshotColumn() {
+    try {
+      await this.prisma.$executeRawUnsafe(
+        "ALTER TABLE \"order_items\" ADD COLUMN IF NOT EXISTS \"image_snapshot\" TEXT NOT NULL DEFAULT ''",
+      );
+    } catch (error) {
+      if (!this.isMissingTableError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  async ensureMerchantSubOrderAttentionStateColumn() {
+    try {
+      await this.prisma.$executeRawUnsafe(
+        "ALTER TABLE \"merchant_sub_orders\" ADD COLUMN IF NOT EXISTS \"attention_state\" TEXT NOT NULL DEFAULT 'NONE'",
+      );
+      await this.prisma.$executeRawUnsafe(
+        "ALTER TABLE \"merchant_sub_orders\" ADD COLUMN IF NOT EXISTS \"process_by_at\" TIMESTAMP(3)",
+      );
+      await this.prisma.$executeRawUnsafe(
+        "ALTER TABLE \"merchant_sub_orders\" ADD COLUMN IF NOT EXISTS \"delayed_at\" TIMESTAMP(3)",
+      );
+    } catch (error) {
+      if (!this.isMissingTableError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  async hasMerchantPlanTable() {
+    const result = await this.prisma.$queryRawUnsafe<Array<{ exists: boolean }>>(
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'merchant_plans') AS exists",
+    );
+
+    return result[0]?.exists === true;
+  }
+
+  async hasPostgresType(typeName: string) {
+    const result = await this.prisma.$queryRawUnsafe<Array<{ exists: boolean }>>(
+      `SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = '${typeName.replace(/'/g, "''")}') AS exists`,
+    );
+
+    return result[0]?.exists === true;
+  }
+
   toggleFavorite(customerId: string, productId: string) {
     return this.prisma.favorite.findUnique({
       where: {
@@ -178,92 +254,375 @@ export class CommerceRepository {
   }
 
   listCustomerOrders(customerId: string) {
-    return this.prisma.order.findMany({
-      where: { customerId },
-      include: {
-        items: {
-          include: {
-            variant: {
-              include: {
-                product: true,
+    return this.prisma.order
+      .findMany({
+        where: { customerId },
+        include: {
+          items: {
+            include: {
+              variant: {
+                include: {
+                  product: {
+                    include: {
+                      images: true,
+                    },
+                  },
+                },
               },
             },
           },
-        },
-        statusHistory: {
-          orderBy: { createdAt: "asc" },
-        },
-        payment: true,
-        subOrders: {
-          include: {
-            merchant: true,
+          statusHistory: {
+            orderBy: { createdAt: "asc" },
+          },
+          payment: true,
+          subOrders: {
+            include: {
+              merchant: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+      })
+      .catch(async (error) => {
+        if (!this.isMissingTableError(error)) {
+          throw error;
+        }
+
+        const legacyOrders = await this.prisma.order.findMany({
+          where: { customerId },
+          include: {
+            items: {
+              include: {
+                variant: {
+                  include: {
+                    product: {
+                      include: {
+                        images: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            statusHistory: {
+              orderBy: { createdAt: "asc" },
+            },
+            payment: true,
+          },
+          orderBy: { createdAt: "desc" },
+        });
+
+        return legacyOrders.map((order) => ({ ...order, subOrders: [] })) as never;
+      });
   }
 
   listOrdersForMerchant(merchantId: string) {
-    return this.prisma.merchantSubOrder.findMany({
-      where: { merchantId },
-      include: {
-        order: {
+    return this.prisma.merchantSubOrder
+      .findMany({
+        where: { merchantId },
+        include: {
+          order: {
+            include: {
+              customer: {
+                include: {
+                  user: true,
+                },
+              },
+            },
+          },
+          items: {
+            include: {
+              orderItem: {
+                include: {
+                  variant: {
+                    include: {
+                      product: {
+                        include: {
+                          images: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          shipment: {
+            include: {
+              carrier: true,
+            },
+          },
+          bamoraCharge: true,
+        },
+        orderBy: { createdAt: "desc" },
+      })
+      .then(async (subOrders) => {
+        if (subOrders.length > 0) {
+          return subOrders;
+        }
+
+        const directOrders = await this.prisma.order.findMany({
+          where: {
+            items: {
+              some: {
+                variant: {
+                  product: {
+                    merchantId,
+                  },
+                },
+              },
+            },
+          },
           include: {
             customer: {
               include: {
                 user: true,
               },
             },
-            payment: true,
-          },
-        },
-        items: {
-          include: {
-            orderItem: {
+            items: {
+              where: {
+                variant: {
+                  product: {
+                    merchantId,
+                  },
+                },
+              },
               include: {
                 variant: {
                   include: {
-                    product: true,
+                    product: {
+                      include: {
+                        images: true,
+                      },
+                    },
                   },
                 },
               },
             },
           },
-        },
-        shipment: {
-          include: {
-            carrier: true,
+          orderBy: { createdAt: "desc" },
+        });
+
+        return directOrders.map((order) => ({
+          id: `${order.id}-${merchantId}`,
+          orderId: order.id,
+          merchantId,
+          subOrderNumber: order.orderNumber,
+          status: order.status,
+          fulfillmentStatus: order.status,
+          subtotal: new Prisma.Decimal(order.items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0)),
+          attentionState: null,
+          processByAt: null,
+          delayedAt: null,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          order: {
+            orderNumber: order.orderNumber,
+            customer: {
+              user: {
+                email: order.customer.user.email,
+              },
+            },
           },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+          items: order.items.map((item) => ({
+            quantity: item.quantity,
+            orderItem: item,
+          })),
+          shipment: null,
+          bamoraCharge: null,
+        })) as never;
+      })
+      .catch(async (error) => {
+        if (!this.isMissingTableError(error)) {
+          throw error;
+        }
+
+        const legacySubOrders = await this.prisma.$queryRaw<Array<{ id: string; order_id: string; status: string; subtotal: Prisma.Decimal | number; created_at: Date }>>`
+          select id, order_id, status, subtotal, created_at
+          from merchant_sub_orders
+          where merchant_id = ${merchantId}
+          order by created_at desc
+        `;
+
+        if (legacySubOrders.length === 0) {
+          return [] as never;
+        }
+
+        const orderIds = Array.from(new Set(legacySubOrders.map((item) => item.order_id)));
+        const subOrderIds = legacySubOrders.map((item) => item.id);
+
+        const [orders, subOrderItems] = await Promise.all([
+          this.prisma.order.findMany({
+            where: { id: { in: orderIds } },
+            include: {
+              customer: {
+                include: {
+                  user: true,
+                },
+              },
+            },
+          }),
+          this.prisma.subOrderItem.findMany({
+            where: { subOrderId: { in: subOrderIds } },
+            include: {
+              orderItem: {
+                include: {
+                  variant: {
+                    include: {
+                      product: {
+                        include: {
+                          images: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          }),
+        ]);
+
+        const orderById = new Map(orders.map((order) => [order.id, order]));
+        const itemsBySubOrderId = new Map<string, typeof subOrderItems>();
+        for (const item of subOrderItems) {
+          const current = itemsBySubOrderId.get(item.subOrderId) ?? [];
+          current.push(item);
+          itemsBySubOrderId.set(item.subOrderId, current);
+        }
+
+        return legacySubOrders.map((subOrder) => ({
+          id: subOrder.id,
+          orderId: subOrder.order_id,
+          merchantId,
+          subOrderNumber: subOrder.id,
+          status: subOrder.status,
+          fulfillmentStatus: subOrder.status,
+          subtotal: subOrder.subtotal,
+          attentionState: null,
+          processByAt: null,
+          delayedAt: null,
+          createdAt: subOrder.created_at,
+          updatedAt: subOrder.created_at,
+          order: {
+            orderNumber: orderById.get(subOrder.order_id)?.orderNumber ?? subOrder.order_id,
+            customer: {
+              user: {
+                email: orderById.get(subOrder.order_id)?.customer?.user?.email ?? "-",
+              },
+            },
+          },
+          items: (itemsBySubOrderId.get(subOrder.id) ?? []).map((entry) => ({
+            quantity: entry.quantity,
+            orderItem: entry.orderItem,
+          })),
+          shipment: null,
+          bamoraCharge: null,
+        })) as never;
+      });
   }
 
   listAllOrders() {
-    return this.prisma.order.findMany({
-      include: {
-        customer: { include: { user: true } },
-        payment: true,
-        statusHistory: { orderBy: { createdAt: "asc" } },
-        subOrders: {
-          include: {
-            merchant: true,
-            shipment: { include: { carrier: true } },
+    return this.prisma.order
+      .findMany({
+        include: {
+          customer: { include: { user: true } },
+          items: {
+            include: {
+              variant: {
+                include: {
+                  product: {
+                    include: {
+                      images: true,
+                      merchant: {
+                        include: {
+                          user: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          payment: true,
+          statusHistory: { orderBy: { createdAt: "asc" } },
+          subOrders: {
+            include: {
+              merchant: {
+                include: {
+                  user: true,
+                },
+              },
+              items: {
+                include: {
+                  orderItem: true,
+                },
+              },
+              shipment: { include: { carrier: true } },
+              bamoraCharge: true,
+            },
           },
         },
+        orderBy: { createdAt: "desc" },
+      })
+      .catch(async (error) => {
+        if (!this.isMissingTableError(error)) {
+          throw error;
+        }
+
+        const legacyOrders = await this.prisma.order.findMany({
+          include: {
+            customer: { include: { user: true } },
+            items: {
+              include: {
+                variant: {
+                  include: {
+                    product: {
+                      include: {
+                        images: true,
+                        merchant: {
+                          include: {
+                            user: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            payment: true,
+            statusHistory: { orderBy: { createdAt: "asc" } },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+
+        return legacyOrders.map((order) => ({ ...order, subOrders: [] })) as never;
+      });
+  }
+
+  listMerchants() {
+    return this.prisma.merchant.findMany({
+      include: {
+        user: true,
+        plan: true,
+        merchantSubOrders: true,
       },
       orderBy: { createdAt: "desc" },
     });
   }
 
-  listMerchants() {
-    return this.prisma.merchant.findMany({ include: { user: true }, orderBy: { createdAt: "desc" } });
-  }
-
-  updateMerchantStatus(id: string, status: "PENDING" | "APPROVED" | "SUSPENDED") {
-    return this.prisma.merchant.update({ where: { id }, data: { status } });
+  updateMerchantStatus(id: string, status: "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED") {
+    return this.prisma.merchant.update({
+      where: { id },
+      data: {
+        status,
+        approvedAt: status === "ACTIVE" ? new Date() : null,
+      },
+      include: {
+        user: true,
+      },
+    });
   }
 
   listUsers() {
@@ -364,19 +723,46 @@ export class CommerceRepository {
     const slug = input.name.toLowerCase().replace(/\s+/g, "-") + `-${Date.now()}`;
 
     if (input.id) {
-      return this.prisma.product.update({
-        where: { id: input.id },
-        data: {
-          titleAr: input.name,
-          titleEn: input.name,
-          descriptionAr: input.name,
-          descriptionEn: input.name,
-          status: "PUBLISHED",
-        },
-        include: {
-          variants: { include: { inventory: true } },
-          images: true,
-        },
+      return this.prisma.$transaction(async (tx) => {
+        await tx.product.update({
+          where: { id: input.id },
+          data: {
+            titleAr: input.name,
+            titleEn: input.name,
+            descriptionAr: input.name,
+            descriptionEn: input.name,
+            status: "PUBLISHED",
+            images: {
+              deleteMany: {},
+              create: input.images.map((url, index) => ({ url, sortOrder: index })),
+            },
+          },
+        });
+
+        await tx.productVariant.updateMany({
+          where: { productId: input.id },
+          data: { price: new Prisma.Decimal(input.price) },
+        });
+
+        const variants = await tx.productVariant.findMany({
+          where: { productId: input.id },
+          select: { id: true },
+        });
+
+        if (variants.length > 0) {
+          await tx.inventory.updateMany({
+            where: { variantId: { in: variants.map((variant) => variant.id) } },
+            data: { quantity: input.stock },
+          });
+        }
+
+        return tx.product.findUniqueOrThrow({
+          where: { id: input.id },
+          include: {
+            variants: { include: { inventory: true } },
+            images: true,
+          },
+        });
       });
     }
 
@@ -590,5 +976,303 @@ export class CommerceRepository {
 
   listEmailNotifications() {
     return this.prisma.emailNotification.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
+  }
+
+  ensureMerchantPlan(merchantId: string) {
+    return this.prisma.merchantPlan
+      .upsert({
+        where: { merchantId },
+        update: {},
+        create: { merchantId },
+      })
+      .catch((error) => {
+        if (this.isMissingTableError(error)) {
+          return {
+            id: `plan-missing-${merchantId}`,
+            merchantId,
+            selectedPlan: null,
+            approvalStatus: "PENDING_PLAN_APPROVAL",
+            subscriptionPaymentStatus: "PENDING",
+            monthlySubscriptionAmount: new Prisma.Decimal(0),
+            commissionRate: new Prisma.Decimal(0.2),
+            tenOrderLimit: 10,
+            tenOrderCycleCount: 0,
+            bamoraFeesOwed: new Prisma.Decimal(0),
+            bamoraFeesPaid: new Prisma.Decimal(0),
+            outstandingBalance: new Prisma.Decimal(0),
+            blockedAt: null,
+            reopenedAt: null,
+            requestedAt: null,
+            approvedAt: null,
+            rejectedAt: null,
+            reviewedByAdminId: null,
+            notes: null,
+            subscriptionActiveUntil: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }
+
+        throw error;
+      });
+  }
+
+  findMerchantPlanByMerchantId(merchantId: string) {
+    return this.prisma.merchantPlan.findUnique({ where: { merchantId } }).catch((error) => {
+      if (this.isMissingTableError(error)) {
+        return null;
+      }
+
+      throw error;
+    });
+  }
+
+  requestMerchantPlan(merchantId: string, planType: "MONTHLY_SUBSCRIPTION" | "BAMORA_COMMISSION" | "TEN_ORDER_LIMIT") {
+    return this.prisma.merchantPlan.upsert({
+      where: { merchantId },
+      update: {
+        selectedPlan: planType,
+        approvalStatus: "PENDING_PLAN_APPROVAL",
+        requestedAt: new Date(),
+        rejectedAt: null,
+      },
+      create: {
+        merchantId,
+        selectedPlan: planType,
+        approvalStatus: "PENDING_PLAN_APPROVAL",
+        requestedAt: new Date(),
+      },
+    });
+  }
+
+  reviewMerchantPlan(
+    merchantId: string,
+    input: {
+      adminUserId: string;
+      approve: boolean;
+      notes?: string;
+      subscriptionActiveUntil?: Date | null;
+      subscriptionPaymentStatus?: "PENDING" | "ACTIVE" | "EXPIRED";
+    },
+  ) {
+    return this.prisma.merchantPlan.update({
+      where: { merchantId },
+      data: {
+        approvalStatus: input.approve ? "ACTIVE" : "REJECTED",
+        approvedAt: input.approve ? new Date() : null,
+        rejectedAt: input.approve ? null : new Date(),
+        reviewedByAdminId: input.adminUserId,
+        notes: input.notes,
+        subscriptionActiveUntil: input.subscriptionActiveUntil,
+        subscriptionPaymentStatus: input.subscriptionPaymentStatus,
+      },
+    });
+  }
+
+  updateMerchantPlanStatus(
+    merchantId: string,
+    data: {
+      subscriptionPaymentStatus?: "PENDING" | "ACTIVE" | "EXPIRED";
+      subscriptionActiveUntil?: Date | null;
+      tenOrderCycleCount?: number;
+      bamoraFeesOwed?: Prisma.Decimal;
+      bamoraFeesPaid?: Prisma.Decimal;
+      outstandingBalance?: Prisma.Decimal;
+      blockedAt?: Date | null;
+      reopenedAt?: Date | null;
+    },
+  ) {
+    return this.prisma.merchantPlan.update({ where: { merchantId }, data });
+  }
+
+  listPendingPlanApprovals() {
+    return this.prisma.merchantPlan
+      .findMany({
+        where: { approvalStatus: "PENDING_PLAN_APPROVAL" },
+        include: { merchant: { include: { user: true } } },
+        orderBy: { requestedAt: "asc" },
+      })
+      .catch((error) => {
+        if (this.isMissingTableError(error)) {
+          return [];
+        }
+
+        throw error;
+      });
+  }
+
+  createBamoraCharge(input: {
+    merchantId: string;
+    orderId: string;
+    subOrderId: string;
+    planType: "MONTHLY_SUBSCRIPTION" | "BAMORA_COMMISSION" | "TEN_ORDER_LIMIT";
+    orderAmount: number;
+    bamoraFee: number;
+    dueAt?: Date;
+  }) {
+    return this.prisma.merchantBamoraCharge.create({
+      data: {
+        merchantId: input.merchantId,
+        orderId: input.orderId,
+        subOrderId: input.subOrderId,
+        planType: input.planType,
+        orderAmount: new Prisma.Decimal(input.orderAmount),
+        bamoraFee: new Prisma.Decimal(input.bamoraFee),
+        remainingAmount: new Prisma.Decimal(input.bamoraFee),
+        dueAt: input.dueAt,
+      },
+    });
+  }
+
+  findBamoraChargeBySubOrderId(subOrderId: string) {
+    return this.prisma.merchantBamoraCharge.findUnique({ where: { subOrderId } });
+  }
+
+  listBamoraCharges() {
+    return this.prisma.merchantBamoraCharge.findMany({
+      include: { merchant: { include: { user: true } }, order: true, subOrder: true },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  confirmBamoraCharge(chargeId: string, adminUserId: string) {
+    return this.prisma.merchantBamoraCharge.update({
+      where: { id: chargeId },
+      data: {
+        paymentStatus: "CONFIRMED",
+        remainingAmount: new Prisma.Decimal(0),
+        paidAt: new Date(),
+        confirmedAt: new Date(),
+        confirmedByAdminId: adminUserId,
+      },
+    });
+  }
+
+  markOverdueCharges(now: Date) {
+    return this.prisma.merchantBamoraCharge.updateMany({
+      where: {
+        paymentStatus: "PENDING",
+        dueAt: { lt: now },
+      },
+      data: {
+        paymentStatus: "OVERDUE",
+      },
+    });
+  }
+
+  updateSubOrderAttention(
+    subOrderId: string,
+    attentionState: "NORMAL" | "PENDING_REVIEW" | "PENDING_BAMORA_PAYMENT" | "DELAYED",
+    delayedAt?: Date | null,
+  ) {
+    return this.prisma.merchantSubOrder.update({
+      where: { id: subOrderId },
+      data: {
+        attentionState,
+        delayedAt: delayedAt === undefined ? undefined : delayedAt,
+      },
+    });
+  }
+
+  listDelayedSubOrders(now: Date) {
+    return this.prisma.merchantSubOrder.findMany({
+      where: {
+        processByAt: { lt: now },
+        delayedAt: null,
+        status: { in: ["PENDING", "CONFIRMED", "PACKED"] },
+      },
+      include: { merchant: { include: { user: true } }, order: true },
+    });
+  }
+
+  createAdminAlert(input: {
+    code: string;
+    title: string;
+    body: string;
+    merchantId?: string;
+    orderId?: string;
+    level?: string;
+  }) {
+    return this.prisma.adminAlert.create({
+      data: {
+        code: input.code,
+        title: input.title,
+        body: input.body,
+        merchantId: input.merchantId,
+        orderId: input.orderId,
+        level: input.level ?? "warning",
+      },
+    });
+  }
+
+  findOpenAdminAlert(code: string, merchantId?: string, orderId?: string) {
+    return this.prisma.adminAlert.findFirst({
+      where: {
+        code,
+        merchantId,
+        orderId,
+        resolvedAt: null,
+      },
+    });
+  }
+
+  listAdminAlerts(limit = 200) {
+    return this.prisma.adminAlert.findMany({
+      where: { resolvedAt: null },
+      include: { merchant: { include: { user: true } }, order: true },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+  }
+
+  resolveAdminAlert(id: string) {
+    return this.prisma.adminAlert.update({ where: { id }, data: { resolvedAt: new Date() } });
+  }
+
+  createMerchantActivityLog(input: {
+    merchantId: string;
+    action: string;
+    entityType: string;
+    entityId?: string;
+    oldValue?: Prisma.InputJsonValue;
+    newValue?: Prisma.InputJsonValue;
+    details?: string;
+  }) {
+    return this.prisma.merchantActivityLog
+      .create({
+        data: {
+          merchantId: input.merchantId,
+          action: input.action,
+          entityType: input.entityType,
+          entityId: input.entityId,
+          oldValue: input.oldValue,
+          newValue: input.newValue,
+          details: input.details,
+        },
+      })
+      .catch((error) => {
+        if (this.isMissingTableError(error)) {
+          return null;
+        }
+
+        throw error;
+      });
+  }
+
+  listMerchantActivityLogs(merchantId?: string) {
+    return this.prisma.merchantActivityLog
+      .findMany({
+        where: merchantId ? { merchantId } : undefined,
+        include: { merchant: { include: { user: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+      })
+      .catch((error) => {
+        if (this.isMissingTableError(error)) {
+          return [];
+        }
+
+        throw error;
+      });
   }
 }

@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { unlink } from "fs/promises";
 import { Prisma } from "@prisma/client";
+import { basename, join } from "path";
 import { PaymentGatewayService } from "../payments/payment-gateway.service";
 import { CommerceRepository } from "../repositories/commerce.repository";
 
@@ -7,11 +9,14 @@ type SessionUser = {
   sub: string;
   email: string;
   role: "customer" | "merchant" | "super-admin";
+  merchantId?: string;
+  merchantStatus?: "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED";
 };
 
 @Injectable()
 export class CommerceService {
   private readonly lowStockThreshold = 5;
+  private readonly subOrderDelayHours = Number(process.env.MERCHANT_SUBORDER_DELAY_HOURS ?? 24);
 
   constructor(
     private readonly repository: CommerceRepository,
@@ -26,8 +31,152 @@ export class CommerceService {
     return Number(value);
   }
 
-  private async resolveCustomerId(user?: SessionUser, fallbackUserId?: string) {
-    const userId = user?.sub ?? fallbackUserId;
+  private isMissingSchemaError(error: unknown) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      return false;
+    }
+
+    return error.code === "P2021" || error.code === "P2022" || error.message.includes("does not exist in the current database");
+  }
+
+  private sanitizeImageUrls(images: string[]) {
+    return images.map((item) => item.trim()).filter(Boolean);
+  }
+
+  private requireAtLeastOneImage(images: string[]) {
+    const sanitized = this.sanitizeImageUrls(images);
+    if (sanitized.length === 0) {
+      throw new BadRequestException("At least one product image is required.");
+    }
+
+    const hasInvalidImage = sanitized.some((url) => this.extractLocalUploadFileName(url) == null);
+    if (hasInvalidImage) {
+      throw new BadRequestException("Product image must be uploaded through /api/uploads/images.");
+    }
+
+    return sanitized;
+  }
+
+  private extractLocalUploadFileName(imageUrl: string) {
+    const value = imageUrl.trim();
+    if (!value) {
+      return null;
+    }
+
+    if (value.startsWith("/uploads/")) {
+      return basename(value);
+    }
+
+    if (value.startsWith("http://") || value.startsWith("https://")) {
+      try {
+        const parsed = new URL(value);
+        if (parsed.pathname.startsWith("/uploads/")) {
+          return basename(parsed.pathname);
+        }
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  private async removeLocalUploadFiles(imageUrls: string[]) {
+    const fileNames = Array.from(
+      new Set(
+        imageUrls
+          .map((url) => this.extractLocalUploadFileName(url))
+          .filter((name): name is string => Boolean(name)),
+      ),
+    );
+
+    await Promise.all(
+      fileNames.map(async (fileName) => {
+        try {
+          await unlink(join(process.cwd(), "uploads", fileName));
+        } catch {
+          // Best-effort cleanup; product lifecycle should not fail on missing files.
+        }
+      }),
+    );
+  }
+
+  private normalizePlanType(plan: "monthly_subscription" | "bamora_commission" | "ten_order_limit") {
+    if (plan === "monthly_subscription") {
+      return "MONTHLY_SUBSCRIPTION" as const;
+    }
+
+    if (plan === "bamora_commission") {
+      return "BAMORA_COMMISSION" as const;
+    }
+
+    return "TEN_ORDER_LIMIT" as const;
+  }
+
+  private normalizeSubscriptionStatus(status?: "pending" | "active" | "expired") {
+    if (!status) {
+      return undefined;
+    }
+
+    return status.toUpperCase() as "PENDING" | "ACTIVE" | "EXPIRED";
+  }
+
+  private async ensureMerchantPlanAccess(merchantId: string) {
+    const plan = (await this.repository.findMerchantPlanByMerchantId(merchantId)) ?? (await this.repository.ensureMerchantPlan(merchantId));
+    if (plan.approvalStatus !== "ACTIVE" || !plan.selectedPlan) {
+      throw new BadRequestException("Merchant plan is not active.");
+    }
+
+    if (plan.selectedPlan === "MONTHLY_SUBSCRIPTION") {
+      const isExpired = !!(plan.subscriptionActiveUntil && plan.subscriptionActiveUntil.getTime() < Date.now());
+      if (plan.subscriptionPaymentStatus !== "ACTIVE" || isExpired) {
+        throw new BadRequestException("Merchant monthly subscription is not active.");
+      }
+    }
+
+    return plan;
+  }
+
+  private async createAlertIfMissing(input: {
+    code: string;
+    title: string;
+    body: string;
+    merchantId?: string;
+    orderId?: string;
+    level?: string;
+  }) {
+    const existing = await this.repository.findOpenAdminAlert(input.code, input.merchantId, input.orderId);
+    if (!existing) {
+      await this.repository.createAdminAlert(input);
+    }
+  }
+
+  private async monitorDelayedSubOrders() {
+    const delayed = await this.repository.listDelayedSubOrders(new Date());
+    for (const subOrder of delayed) {
+      await this.repository.updateSubOrderAttention(subOrder.id, "DELAYED", new Date());
+      await this.repository.createMerchantActivityLog({
+        merchantId: subOrder.merchantId,
+        action: "SUB_ORDER_DELAYED",
+        entityType: "merchant_sub_order",
+        entityId: subOrder.id,
+        details: `Sub-order ${subOrder.subOrderNumber} exceeded processing SLA`,
+      });
+      await this.createAlertIfMissing({
+        code: "DELAYED_SUBORDER",
+        title: "Delayed merchant sub-order",
+        body: `Sub-order ${subOrder.subOrderNumber} for merchant ${subOrder.merchant.businessName} is delayed.`,
+        merchantId: subOrder.merchantId,
+        orderId: subOrder.orderId,
+        level: "critical",
+      });
+    }
+
+    return delayed;
+  }
+
+  private async resolveCustomerId(user?: SessionUser) {
+    const userId = user?.sub;
     if (!userId) {
       throw new BadRequestException("Customer user id is required.");
     }
@@ -40,9 +189,9 @@ export class CommerceService {
     return customer.id;
   }
 
-  private async resolveMerchantId(user?: SessionUser, fallbackMerchantId?: string) {
-    if (fallbackMerchantId) {
-      return fallbackMerchantId;
+  private async resolveMerchantId(user?: SessionUser) {
+    if (user?.merchantId) {
+      return user.merchantId;
     }
 
     if (!user?.sub) {
@@ -57,8 +206,15 @@ export class CommerceService {
     return merchant.id;
   }
 
-  async customerDashboard(user?: SessionUser, fallbackUserId?: string) {
-    const customerId = await this.resolveCustomerId(user, fallbackUserId);
+  private resolveOrderMerchantId(order: {
+    subOrders?: Array<{ merchantId: string }>;
+    items: Array<{ variant: { product: { merchantId: string } } }>;
+  }) {
+    return order.subOrders?.[0]?.merchantId ?? order.items[0]?.variant.product.merchantId ?? null;
+  }
+
+  async customerDashboard(user?: SessionUser) {
+    const customerId = await this.resolveCustomerId(user);
     const customer = await this.repository.customerDashboard(customerId);
     if (!customer) {
       throw new NotFoundException("Customer dashboard not found.");
@@ -86,10 +242,14 @@ export class CommerceService {
       })),
       products: products.map((product) => {
         const leadVariant = product.variants[0];
+        const preferredCategory =
+          product.categories.find((item) => item.category.parentId != null)?.category ??
+          product.categories[0]?.category;
         return {
           id: product.id,
           merchantId: product.merchantId,
           name: product.titleAr,
+          category: preferredCategory?.nameAr ?? "عام",
           stock: leadVariant?.inventory?.quantity ?? 0,
           price: leadVariant ? this.decimalToNumber(leadVariant.price).toFixed(2) : "0.00",
           images: product.images.map((item) => item.url),
@@ -105,14 +265,27 @@ export class CommerceService {
           quantity: item.quantity,
           size: item.variant.size,
           color: item.variant.color,
+          productName: item.variant.product.titleAr,
+          productImageUrl: item.variant.product.images[0]?.url,
         })) ?? [],
       orders: orders.map((order) => ({
         id: order.id,
-        merchantId: order.subOrders[0]?.merchantId ?? null,
+        productId: order.items[0]?.variant.productId ?? undefined,
+        merchantId: this.resolveOrderMerchantId(order),
         customerId: order.customerId,
         status: order.status.toLowerCase(),
         total: this.decimalToNumber(order.total).toFixed(2),
         paymentStatus: order.payment?.status ?? "PENDING",
+        createdAt: order.createdAt,
+        items: order.items.map((item) => ({
+          id: item.id,
+          title: item.titleSnapshot,
+          quantity: item.quantity,
+          size: item.sizeSnapshot,
+          color: item.colorSnapshot,
+          unitPrice: this.decimalToNumber(item.unitPrice).toFixed(2),
+          imageUrl: item.imageSnapshot,
+        })),
         statusHistory: order.statusHistory.map((entry) => ({
           status: entry.status,
           note: entry.note,
@@ -122,13 +295,13 @@ export class CommerceService {
     };
   }
 
-  async upsertAddress(
-    input: { id?: string; label: string; line1: string; city: string; isDefault: boolean; phone?: string; shippingZoneId?: string },
-    user?: SessionUser,
-    fallbackUserId?: string,
-  ) {
-    const customerId = await this.resolveCustomerId(user, fallbackUserId);
-    const zones = await this.repository.listShippingZones();
+  async upsertAddress(input: { id?: string; label: string; line1: string; city: string; isDefault: boolean; phone?: string; shippingZoneId?: string }, user?: SessionUser) {
+    const customerId = await this.resolveCustomerId(user);
+    let zones = await this.repository.listShippingZones();
+    if (zones.length === 0) {
+      await this.repository.ensureDefaultShippingZone();
+      zones = await this.repository.listShippingZones();
+    }
     const zoneId = input.shippingZoneId ?? zones[0]?.id;
     if (!zoneId) {
       throw new BadRequestException("No shipping zones configured.");
@@ -158,8 +331,8 @@ export class CommerceService {
     };
   }
 
-  async toggleFavorite(productId: string, user?: SessionUser, fallbackUserId?: string) {
-    const customerId = await this.resolveCustomerId(user, fallbackUserId);
+  async toggleFavorite(productId: string, user?: SessionUser) {
+    const customerId = await this.resolveCustomerId(user);
     const existing = await this.repository.toggleFavorite(customerId, productId);
 
     if (existing) {
@@ -172,12 +345,8 @@ export class CommerceService {
     return dashboard?.favorites.map((item) => item.productId) ?? [];
   }
 
-  async addToCart(
-    input: { productId: string; quantity: number; size: string; color: string },
-    user?: SessionUser,
-    fallbackUserId?: string,
-  ) {
-    const customerId = await this.resolveCustomerId(user, fallbackUserId);
+  async addToCart(input: { productId: string; quantity: number; size: string; color: string }, user?: SessionUser) {
+    const customerId = await this.resolveCustomerId(user);
     const cart = await this.repository.ensureCart(customerId);
 
     const variants = await this.repository.listProductVariants(input.productId);
@@ -206,14 +375,18 @@ export class CommerceService {
     };
   }
 
-  async removeCartItem(itemId: string, user?: SessionUser, fallbackUserId?: string) {
-    await this.resolveCustomerId(user, fallbackUserId);
+  async removeCartItem(itemId: string, user?: SessionUser) {
+    await this.resolveCustomerId(user);
     const result = await this.repository.removeCartItem(itemId);
     return result.count > 0;
   }
 
-  async checkout(user?: SessionUser, fallbackUserId?: string) {
-    const customerId = await this.resolveCustomerId(user, fallbackUserId);
+  async checkout(user?: SessionUser) {
+    const customerId = await this.resolveCustomerId(user);
+    await this.repository.ensureOrderItemImageSnapshotColumn();
+    await this.repository.ensureMerchantSubOrderAttentionStateColumn();
+    const hasMerchantPlanSchema = await this.repository.hasMerchantPlanTable();
+    const hasMerchantAttentionStateType = await this.repository.hasPostgresType("MerchantAttentionState");
 
     return this.repository.runInTransaction(async (tx) => {
       const customer = await tx.customer.findUnique({
@@ -246,7 +419,11 @@ export class CommerceService {
             include: {
               variant: {
                 include: {
-                  product: true,
+                  product: {
+                    include: {
+                      images: true,
+                    },
+                  },
                   inventory: true,
                 },
               },
@@ -303,6 +480,7 @@ export class CommerceService {
             quantity: cartItem.quantity,
             unitPrice: cartItem.variant.price,
             titleSnapshot: cartItem.variant.product.titleAr,
+            imageSnapshot: cartItem.variant.product.images[0]?.url ?? "",
             colorSnapshot: cartItem.variant.color,
             sizeSnapshot: cartItem.variant.size,
           },
@@ -349,25 +527,140 @@ export class CommerceService {
 
       let idx = 1;
       for (const [merchantId, items] of grouped.entries()) {
-        const subOrder = await tx.merchantSubOrder.create({
-          data: {
-            orderId: order.id,
-            merchantId,
-            subOrderNumber: `${orderNumber}-${idx}`,
-            status: "PENDING",
-            fulfillmentStatus: "PENDING",
-            subtotal: new Prisma.Decimal(items.reduce((sum, item) => sum + item.lineTotal, 0)),
-          },
-        });
+        let merchant: {
+          id: string;
+          businessName: string;
+          userId: string;
+        } | null = null;
+        let merchantPlan: any = null;
 
-        for (const item of items) {
-          await tx.subOrderItem.create({
+        if (hasMerchantPlanSchema) {
+          merchant = await tx.merchant.findUnique({
+            where: { id: merchantId },
+            include: { plan: true, user: true },
+          });
+          if (!merchant) {
+            throw new NotFoundException("Merchant profile not found.");
+          }
+          merchantPlan = (merchant as any).plan ?? null;
+        } else {
+          merchant = await tx.merchant.findUnique({
+            where: { id: merchantId },
+            include: { user: true },
+          });
+          if (!merchant) {
+            throw new NotFoundException("Merchant profile not found.");
+          }
+        }
+
+        if (hasMerchantPlanSchema) {
+          if (!merchantPlan || merchantPlan.approvalStatus !== "ACTIVE" || !merchantPlan.selectedPlan) {
+            throw new BadRequestException(`Merchant ${merchant.businessName} is not ready to receive orders yet.`);
+          }
+
+          if (merchantPlan.selectedPlan === "MONTHLY_SUBSCRIPTION") {
+            const isExpired = !!(merchantPlan.subscriptionActiveUntil && merchantPlan.subscriptionActiveUntil.getTime() < Date.now());
+            if (merchantPlan.subscriptionPaymentStatus !== "ACTIVE" || isExpired) {
+              throw new BadRequestException(`Merchant ${merchant.businessName} subscription is inactive.`);
+            }
+          }
+
+          if (merchantPlan.selectedPlan === "TEN_ORDER_LIMIT" && merchantPlan.tenOrderCycleCount >= merchantPlan.tenOrderLimit) {
+            await tx.merchantPlan.update({
+              where: { merchantId },
+              data: {
+                blockedAt: new Date(),
+                outstandingBalance: merchantPlan.bamoraFeesOwed,
+              },
+            });
+            await this.createAlertIfMissing({
+              code: "TEN_ORDER_LIMIT_REACHED",
+              title: "Merchant requires review",
+              body: `Merchant ${merchant.businessName} reached order cycle limit and is pending review.`,
+              merchantId,
+              level: "warning",
+            });
+            throw new BadRequestException(`Merchant ${merchant.businessName} reached the current order-cycle limit.`);
+          }
+        }
+
+        if (hasMerchantAttentionStateType) {
+          const subOrder = await tx.merchantSubOrder.create({
             data: {
-              subOrderId: subOrder.id,
-              orderItemId: item.orderItemId,
-              quantity: item.quantity,
+              orderId: order.id,
+              merchantId,
+              subOrderNumber: `${orderNumber}-${idx}`,
+              status: "PENDING",
+              fulfillmentStatus: "PENDING",
+              subtotal: new Prisma.Decimal(items.reduce((sum, item) => sum + item.lineTotal, 0)),
+              processByAt: new Date(Date.now() + this.subOrderDelayHours * 60 * 60 * 1000),
             },
           });
+
+          for (const item of items) {
+            await tx.subOrderItem.create({
+              data: {
+                subOrderId: subOrder.id,
+                orderItemId: item.orderItemId,
+                quantity: item.quantity,
+              },
+            });
+          }
+
+          const subOrderTotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
+          if (hasMerchantPlanSchema && merchantPlan && (merchantPlan.selectedPlan === "BAMORA_COMMISSION" || merchantPlan.selectedPlan === "TEN_ORDER_LIMIT")) {
+            const fee = subOrderTotal * this.decimalToNumber(merchantPlan.commissionRate);
+            await tx.merchantBamoraCharge.create({
+              data: {
+                merchantId,
+                orderId: order.id,
+                subOrderId: subOrder.id,
+                planType: merchantPlan.selectedPlan,
+                orderAmount: new Prisma.Decimal(subOrderTotal),
+                bamoraFee: new Prisma.Decimal(fee),
+                remainingAmount: new Prisma.Decimal(fee),
+                dueAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+              },
+            });
+
+            await tx.merchantPlan.update({
+              where: { merchantId },
+              data: {
+                bamoraFeesOwed: { increment: fee },
+                outstandingBalance: { increment: fee },
+                tenOrderCycleCount: merchantPlan.selectedPlan === "TEN_ORDER_LIMIT" ? { increment: 1 } : undefined,
+              },
+            });
+
+            try {
+              await tx.merchantSubOrder.update({
+                where: { id: subOrder.id },
+                data: {
+                  attentionState: "PENDING_BAMORA_PAYMENT",
+                },
+              });
+            } catch (error) {
+              if (!this.isMissingSchemaError(error)) {
+                throw error;
+              }
+            }
+          }
+
+          try {
+            await tx.merchantActivityLog.create({
+              data: {
+                merchantId,
+                action: "SUB_ORDER_ASSIGNED",
+                entityType: "merchant_sub_order",
+                entityId: subOrder.id,
+                details: `Assigned new sub-order ${subOrder.subOrderNumber}`,
+              },
+            });
+          } catch (error) {
+            if (!this.isMissingSchemaError(error)) {
+              throw error;
+            }
+          }
         }
 
         idx += 1;
@@ -439,13 +732,37 @@ export class CommerceService {
     });
   }
 
-  async listCustomerOrders(user?: SessionUser, fallbackUserId?: string) {
-    const customerId = await this.resolveCustomerId(user, fallbackUserId);
-    return this.repository.listCustomerOrders(customerId);
+  async listCustomerOrders(user?: SessionUser) {
+    const customerId = await this.resolveCustomerId(user);
+    const orders = await this.repository.listCustomerOrders(customerId);
+    return orders.map((order) => ({
+      id: order.id,
+      productId: order.items[0]?.variant.productId ?? undefined,
+      merchantId: this.resolveOrderMerchantId(order),
+      customerId: order.customerId,
+      status: order.status.toLowerCase(),
+      total: this.decimalToNumber(order.total).toFixed(2),
+      paymentStatus: order.payment?.status ?? "PENDING",
+      createdAt: order.createdAt,
+      items: order.items.map((item) => ({
+        id: item.id,
+        title: item.titleSnapshot,
+        quantity: item.quantity,
+        size: item.sizeSnapshot,
+        color: item.colorSnapshot,
+        unitPrice: this.decimalToNumber(item.unitPrice).toFixed(2),
+        imageUrl: item.imageSnapshot,
+      })),
+      statusHistory: order.statusHistory.map((entry) => ({
+        status: entry.status,
+        note: entry.note,
+        at: entry.createdAt,
+      })),
+    }));
   }
 
-  async cancelOrder(orderId: string, user?: SessionUser, fallbackUserId?: string) {
-    const customerId = await this.resolveCustomerId(user, fallbackUserId);
+  async cancelOrder(orderId: string, user?: SessionUser) {
+    const customerId = await this.resolveCustomerId(user);
     const order = await this.repository.db.order.findFirst({
       where: { id: orderId, customerId },
       include: { items: true },
@@ -471,8 +788,8 @@ export class CommerceService {
     return { success: true };
   }
 
-  async requestReturn(orderId: string, reason: string | undefined, user?: SessionUser, fallbackUserId?: string) {
-    const customerId = await this.resolveCustomerId(user, fallbackUserId);
+  async requestReturn(orderId: string, reason: string | undefined, user?: SessionUser) {
+    const customerId = await this.resolveCustomerId(user);
     const order = await this.repository.db.order.findFirst({
       where: { id: orderId, customerId },
       include: { payment: true },
@@ -507,8 +824,8 @@ export class CommerceService {
     return { updated: updated.count > 0 };
   }
 
-  async listCustomerNotifications(user?: SessionUser, fallbackUserId?: string) {
-    const userId = user?.sub ?? fallbackUserId;
+  async listCustomerNotifications(user?: SessionUser) {
+    const userId = user?.sub;
     if (!userId) {
       throw new BadRequestException("User id is required.");
     }
@@ -516,8 +833,8 @@ export class CommerceService {
     return this.repository.listNotificationsByUser(userId);
   }
 
-  async submitReview(input: { productId: string; rating: number; comment?: string }, user?: SessionUser, fallbackUserId?: string) {
-    const customerId = await this.resolveCustomerId(user, fallbackUserId);
+  async submitReview(input: { productId: string; rating: number; comment?: string }, user?: SessionUser) {
+    const customerId = await this.resolveCustomerId(user);
     return this.repository.db.review.create({
       data: {
         customerId,
@@ -602,8 +919,19 @@ export class CommerceService {
     return mapped;
   }
 
-  async merchantDashboard(user?: SessionUser, merchantIdFallback?: string) {
-    const merchantId = await this.resolveMerchantId(user, merchantIdFallback);
+  async merchantDashboard(user?: SessionUser) {
+    const merchantId = await this.resolveMerchantId(user);
+    const plan = await this.repository.ensureMerchantPlan(merchantId);
+    const merchant = await this.repository.db.merchant.findUnique({
+      where: { id: merchantId },
+      include: {
+        user: true,
+      },
+    });
+    if (!merchant) {
+      throw new NotFoundException("Merchant profile not found.");
+    }
+
     const [products, orders, lowStock, alerts] = await Promise.all([
       this.repository.listProductsForMerchant(merchantId),
       this.repository.listOrdersForMerchant(merchantId),
@@ -613,6 +941,11 @@ export class CommerceService {
 
     return {
       merchantId,
+      profile: {
+        businessName: merchant.businessName,
+        email: merchant.user.email,
+        status: merchant.status,
+      },
       products,
       orders,
       inventory: {
@@ -624,34 +957,71 @@ export class CommerceService {
         orderCount: orders.length,
         revenue: orders.reduce((sum, item) => sum + this.decimalToNumber(item.subtotal), 0).toFixed(2),
       },
+      plan,
     };
   }
 
   async merchantUpsertProduct(
-    input: { id?: string; merchantId: string; name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
+    input: { id?: string; name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
     user?: SessionUser,
   ) {
-    const merchantId = await this.resolveMerchantId(user, input.merchantId);
-    return this.repository.createOrUpdateProduct({
+    const merchantId = await this.resolveMerchantId(user);
+    const images = this.requireAtLeastOneImage(input.images);
+    let staleImages: string[] = [];
+
+    if (input.id) {
+      const existing = await this.repository.findProductById(input.id);
+      if (!existing || existing.merchantId !== merchantId) {
+        throw new NotFoundException("Product not found.");
+      }
+
+      staleImages = existing.images.map((image) => image.url).filter((url) => !images.includes(url));
+    }
+
+    const product = await this.repository.createOrUpdateProduct({
       id: input.id,
       merchantId,
       name: input.name,
       stock: input.stock,
       price: Number(input.price),
-      images: input.images,
+      images,
       sizes: input.sizes,
       colors: input.colors,
     });
+
+    if (staleImages.length > 0) {
+      await this.removeLocalUploadFiles(staleImages);
+    }
+
+    await this.repository.createMerchantActivityLog({
+      merchantId,
+      action: input.id ? "PRODUCT_UPDATED" : "PRODUCT_CREATED",
+      entityType: "product",
+      entityId: product.id,
+      newValue: { name: input.name, stock: input.stock, price: input.price },
+    });
+
+    return product;
   }
 
-  async merchantDeleteProduct(id: string, user?: SessionUser, merchantIdFallback?: string) {
-    const merchantId = await this.resolveMerchantId(user, merchantIdFallback);
+  async merchantDeleteProduct(id: string, user?: SessionUser) {
+    const merchantId = await this.resolveMerchantId(user);
     const product = await this.repository.findProductById(id);
     if (!product || product.merchantId !== merchantId) {
       throw new NotFoundException("Product not found.");
     }
 
+    const imageUrls = product.images.map((image) => image.url);
     const deleted = await this.repository.deleteProduct(id);
+    if (deleted.count > 0) {
+      await this.removeLocalUploadFiles(imageUrls);
+      await this.repository.createMerchantActivityLog({
+        merchantId,
+        action: "PRODUCT_DELETED",
+        entityType: "product",
+        entityId: id,
+      });
+    }
     return deleted.count > 0;
   }
 
@@ -659,23 +1029,40 @@ export class CommerceService {
     orderId: string,
     status: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED",
     user?: SessionUser,
-    merchantIdFallback?: string,
   ) {
-    const merchantId = await this.resolveMerchantId(user, merchantIdFallback);
+    const merchantId = await this.resolveMerchantId(user);
+    const plan = await this.ensureMerchantPlanAccess(merchantId);
     const subOrder = await this.repository.db.merchantSubOrder.findFirst({ where: { orderId, merchantId } });
     if (!subOrder) {
       throw new NotFoundException("Order is not available for this merchant.");
+    }
+
+    if (plan.selectedPlan !== "MONTHLY_SUBSCRIPTION") {
+      const charge = await this.repository.findBamoraChargeBySubOrderId(subOrder.id);
+      if (charge && charge.paymentStatus !== "CONFIRMED") {
+        await this.repository.updateSubOrderAttention(subOrder.id, "PENDING_BAMORA_PAYMENT");
+        throw new BadRequestException("BAMORA fee payment must be confirmed before updating this order.");
+      }
     }
 
     await this.repository.db.merchantSubOrder.update({
       where: { id: subOrder.id },
       data: {
         status: status as "PENDING" | "CONFIRMED" | "PACKED" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED",
+        attentionState: "NORMAL",
+        delayedAt: null,
       },
     });
 
     const order = await this.repository.db.order.update({ where: { id: orderId }, data: { status } });
     await this.repository.db.orderStatusHistory.create({ data: { orderId, status, note: `Updated by merchant ${merchantId}` } });
+    await this.repository.createMerchantActivityLog({
+      merchantId,
+      action: "SUB_ORDER_STATUS_UPDATED",
+      entityType: "order",
+      entityId: orderId,
+      details: `Status updated to ${status}`,
+    });
 
     return order;
   }
@@ -689,9 +1076,8 @@ export class CommerceService {
       status: "PENDING" | "LABEL_CREATED" | "IN_TRANSIT" | "DELIVERED" | "RETURNED" | "EXCEPTION" | "CANCELLED";
     },
     user?: SessionUser,
-    merchantIdFallback?: string,
   ) {
-    const merchantId = await this.resolveMerchantId(user, merchantIdFallback);
+    const merchantId = await this.resolveMerchantId(user);
     const subOrder = await this.repository.db.merchantSubOrder.findFirst({ where: { orderId: input.orderId, merchantId } });
     if (!subOrder) {
       throw new NotFoundException("Merchant sub-order not found.");
@@ -718,10 +1104,21 @@ export class CommerceService {
       },
     });
 
+    await this.repository.createMerchantActivityLog({
+      merchantId,
+      action: "SHIPMENT_UPDATED",
+      entityType: "shipment",
+      entityId: shipment.id,
+      details: `Shipment status set to ${input.status}`,
+    });
+
     return shipment;
   }
 
   async adminDashboard() {
+    await this.repository.markOverdueCharges(new Date());
+    await this.monitorDelayedSubOrders();
+
     const [merchants, products, orders, categories, users, coupons, inventoryAlerts] = await Promise.all([
       this.repository.listMerchants(),
       this.repository.listProductsForAdmin(),
@@ -732,6 +1129,16 @@ export class CommerceService {
       this.repository.listInventoryAlerts(),
     ]);
 
+    const [planApprovals, bamoraCharges, adminAlerts, merchantActivity] = await Promise.all([
+      this.repository.listPendingPlanApprovals(),
+      this.repository.listBamoraCharges(),
+      this.repository.listAdminAlerts(),
+      this.repository.listMerchantActivityLogs(),
+    ]);
+
+    const merchantCount = users.filter((user) => user.role === "MERCHANT").length;
+    const customerCount = users.filter((user) => user.role === "CUSTOMER").length;
+
     return {
       merchants,
       products,
@@ -740,8 +1147,14 @@ export class CommerceService {
       users,
       coupons,
       inventoryAlerts,
+      planApprovals,
+      bamoraCharges,
+      adminAlerts,
+      merchantActivity,
       stats: {
-        merchantCount: merchants.length,
+        merchantCount,
+        customerCount,
+        subscriberCount: merchantCount + customerCount,
         orderCount: orders.length,
         productCount: products.length,
         userCount: users.length,
@@ -754,8 +1167,163 @@ export class CommerceService {
     return this.repository.listMerchants();
   }
 
-  async updateMerchantStatus(id: string, status: "pending" | "approved" | "suspended") {
-    return this.repository.updateMerchantStatus(id, status.toUpperCase() as "PENDING" | "APPROVED" | "SUSPENDED");
+  async updateMerchantStatus(id: string, status: "pending" | "active" | "rejected" | "suspended") {
+    const normalizedStatus = status.toUpperCase() as "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED";
+    const merchant = await this.repository.updateMerchantStatus(id, normalizedStatus);
+    await this.repository.createMerchantActivityLog({
+      merchantId: merchant.id,
+      action: "MERCHANT_STATUS_UPDATED",
+      entityType: "merchant",
+      entityId: merchant.id,
+      newValue: { status: normalizedStatus },
+    });
+
+    return {
+      ...merchant,
+      credentials: null,
+    };
+  }
+
+  async getMerchantPlan(user?: SessionUser) {
+    const merchantId = await this.resolveMerchantId(user);
+    return this.repository.ensureMerchantPlan(merchantId);
+  }
+
+  async requestMerchantPlan(plan: "monthly_subscription" | "bamora_commission" | "ten_order_limit", user?: SessionUser) {
+    const merchantId = await this.resolveMerchantId(user);
+    const updated = await this.repository.requestMerchantPlan(merchantId, this.normalizePlanType(plan));
+    await this.repository.createMerchantActivityLog({
+      merchantId,
+      action: "PLAN_REQUESTED",
+      entityType: "merchant_plan",
+      entityId: updated.id,
+      newValue: { selectedPlan: updated.selectedPlan },
+    });
+    await this.createAlertIfMissing({
+      code: "PLAN_APPROVAL_REQUESTED",
+      title: "Merchant plan approval requested",
+      body: `Merchant ${merchantId} requested plan ${updated.selectedPlan}.`,
+      merchantId,
+      level: "info",
+    });
+    return updated;
+  }
+
+  listPendingPlanApprovals() {
+    return this.repository.listPendingPlanApprovals();
+  }
+
+  async reviewMerchantPlan(
+    merchantId: string,
+    input: {
+      decision: "approve" | "reject";
+      notes?: string;
+      subscriptionMonths?: number;
+      subscriptionPaymentStatus?: "pending" | "active" | "expired";
+    },
+    user?: SessionUser,
+  ) {
+    if (!user?.sub) {
+      throw new BadRequestException("Admin identity is required.");
+    }
+
+    const approve = input.decision === "approve";
+    const activeUntil = approve && input.subscriptionMonths
+      ? new Date(Date.now() + input.subscriptionMonths * 30 * 24 * 60 * 60 * 1000)
+      : null;
+
+    const plan = await this.repository.reviewMerchantPlan(merchantId, {
+      adminUserId: user.sub,
+      approve,
+      notes: input.notes,
+      subscriptionActiveUntil: activeUntil,
+      subscriptionPaymentStatus: this.normalizeSubscriptionStatus(input.subscriptionPaymentStatus),
+    });
+
+    await this.repository.createMerchantActivityLog({
+      merchantId,
+      action: approve ? "PLAN_APPROVED" : "PLAN_REJECTED",
+      entityType: "merchant_plan",
+      entityId: plan.id,
+      details: input.notes,
+    });
+
+    return plan;
+  }
+
+  async reopenMerchantAfterPayment(merchantId: string) {
+    const plan = await this.repository.findMerchantPlanByMerchantId(merchantId);
+    if (!plan) {
+      throw new NotFoundException("Merchant plan not found.");
+    }
+
+    const updated = await this.repository.updateMerchantPlanStatus(merchantId, {
+      outstandingBalance: new Prisma.Decimal(0),
+      blockedAt: null,
+      reopenedAt: new Date(),
+      tenOrderCycleCount: 0,
+    });
+
+    await this.repository.createMerchantActivityLog({
+      merchantId,
+      action: "MERCHANT_REOPENED",
+      entityType: "merchant_plan",
+      entityId: updated.id,
+      details: "Reopened after admin payment confirmation",
+    });
+
+    return updated;
+  }
+
+  async listDelayedOrders() {
+    await this.repository.markOverdueCharges(new Date());
+    await this.monitorDelayedSubOrders();
+    const orders = await this.repository.listAllOrders();
+    return orders.filter((order) => order.subOrders.some((subOrder) => subOrder.attentionState === "DELAYED"));
+  }
+
+  listBamoraCharges() {
+    return this.repository.listBamoraCharges();
+  }
+
+  async confirmBamoraCharge(chargeId: string, user?: SessionUser) {
+    if (!user?.sub) {
+      throw new BadRequestException("Admin identity is required.");
+    }
+
+    const charge = await this.repository.confirmBamoraCharge(chargeId, user.sub);
+    const plan = await this.repository.findMerchantPlanByMerchantId(charge.merchantId);
+
+    if (plan) {
+      const fee = this.decimalToNumber(charge.bamoraFee);
+      await this.repository.updateMerchantPlanStatus(charge.merchantId, {
+        bamoraFeesPaid: new Prisma.Decimal(this.decimalToNumber(plan.bamoraFeesPaid) + fee),
+        outstandingBalance: new Prisma.Decimal(Math.max(0, this.decimalToNumber(plan.outstandingBalance) - fee)),
+      });
+    }
+
+    await this.repository.updateSubOrderAttention(charge.subOrderId, "NORMAL", null);
+    await this.repository.createMerchantActivityLog({
+      merchantId: charge.merchantId,
+      action: "BAMORA_FEE_CONFIRMED",
+      entityType: "merchant_bamora_charge",
+      entityId: charge.id,
+      details: `Charge confirmed by admin ${user.sub}`,
+    });
+
+    return charge;
+  }
+
+  listAdminAlerts() {
+    return this.repository.listAdminAlerts();
+  }
+
+  resolveAdminAlert(id: string) {
+    return this.repository.resolveAdminAlert(id);
+  }
+
+  listMerchantActivity(merchantId?: string) {
+    return this.repository.listMerchantActivityLogs(merchantId);
   }
 
   async deleteMerchant(id: string) {
@@ -768,20 +1336,48 @@ export class CommerceService {
   }
 
   async adminUpsertProduct(input: { id?: string; merchantId: string; name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] }) {
-    return this.repository.createOrUpdateProduct({
+    const images = this.requireAtLeastOneImage(input.images);
+    let staleImages: string[] = [];
+
+    if (input.id) {
+      const existing = await this.repository.findProductById(input.id);
+      if (!existing) {
+        throw new NotFoundException("Product not found.");
+      }
+
+      staleImages = existing.images.map((image) => image.url).filter((url) => !images.includes(url));
+    }
+
+    const product = await this.repository.createOrUpdateProduct({
       id: input.id,
       merchantId: input.merchantId,
       name: input.name,
       stock: input.stock,
       price: Number(input.price),
-      images: input.images,
+      images,
       sizes: input.sizes,
       colors: input.colors,
     });
+
+    if (staleImages.length > 0) {
+      await this.removeLocalUploadFiles(staleImages);
+    }
+
+    return product;
   }
 
   async adminDeleteProduct(id: string) {
+    const product = await this.repository.findProductById(id);
+    if (!product) {
+      return false;
+    }
+
+    const imageUrls = product.images.map((image) => image.url);
     const result = await this.repository.deleteProduct(id);
+    if (result.count > 0) {
+      await this.removeLocalUploadFiles(imageUrls);
+    }
+
     return result.count > 0;
   }
 
@@ -828,6 +1424,10 @@ export class CommerceService {
       discountType: "%",
       discountValue: parsed,
     });
+  }
+
+  listCoupons() {
+    return this.repository.listCoupons();
   }
 
   async sendBroadcast(input: { audience: "all-users" | "customers" | "merchants"; title: string; body: string }) {

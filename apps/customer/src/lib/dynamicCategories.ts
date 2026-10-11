@@ -2,20 +2,27 @@ export type DynamicCategory = {
   id: string;
   titleAr: string;
   icon: string;
+  parentId?: string | null;
 };
 
 const STORAGE_KEY = "bamoraMerchantCategories";
-const CATEGORIES_API_ENDPOINT = "/api/catalog/categories";
+const CATEGORIES_API_ENDPOINT = `${process.env.NEXT_PUBLIC_BAMORA_API_URL ?? "http://127.0.0.1:4001"}/api/catalog/categories`;
 
 const defaultCategories: DynamicCategory[] = [
   { id: "women", titleAr: "نسائي", icon: "👗" },
+  { id: "dresses", titleAr: "فساتين", icon: "👗", parentId: "women" },
   { id: "men", titleAr: "رجالي", icon: "🤵" },
   { id: "kids", titleAr: "أطفال", icon: "🧒" },
+  { id: "accessories", titleAr: "إكسسوارات", icon: "👜" },
+  { id: "bags", titleAr: "حقائب", icon: "👜", parentId: "accessories" },
+  { id: "shoes", titleAr: "أحذية", icon: "👟", parentId: "accessories" },
+  { id: "glasses", titleAr: "نظارات", icon: "🕶️", parentId: "accessories" },
+  { id: "beauty", titleAr: "الجمال والعناية", icon: "💄" },
+  { id: "makeup", titleAr: "مكياج", icon: "💄", parentId: "beauty" },
+  { id: "perfumes", titleAr: "عطور", icon: "🧴", parentId: "beauty" },
   { id: "home", titleAr: "منزلي", icon: "🏠" },
   { id: "electronics", titleAr: "إلكترونيات", icon: "📱" },
   { id: "sports", titleAr: "رياضة", icon: "🏃" },
-  { id: "fragrance", titleAr: "عطور", icon: "🧴" },
-  { id: "accessories", titleAr: "إكسسوارات", icon: "👜" },
 ];
 
 function normalizeId(value: string, fallbackIndex: number) {
@@ -36,9 +43,13 @@ function sanitizeCategory(input: unknown, index: number): DynamicCategory | null
   const raw = input as Record<string, unknown>;
   const titleAr = typeof raw.titleAr === "string"
     ? raw.titleAr.trim()
-    : typeof raw.name === "string"
-      ? raw.name.trim()
-      : "";
+    : typeof raw.nameAr === "string"
+      ? raw.nameAr.trim()
+      : typeof raw.name === "string"
+        ? raw.name.trim()
+        : typeof raw.title === "string"
+          ? raw.title.trim()
+          : "";
 
   if (!titleAr) {
     return null;
@@ -54,10 +65,23 @@ function sanitizeCategory(input: unknown, index: number): DynamicCategory | null
     ? raw.icon.trim()
     : "🛍️";
 
+  const parentCandidate =
+    typeof raw.parentId === "string"
+      ? raw.parentId
+      : typeof raw.parent === "string"
+        ? raw.parent
+        : raw.parent && typeof raw.parent === "object" && typeof (raw.parent as Record<string, unknown>).id === "string"
+          ? ((raw.parent as Record<string, unknown>).id as string)
+          : null;
+
   return {
     id: normalizeId(idSource, index),
     titleAr,
     icon,
+    parentId:
+      typeof parentCandidate === "string" && parentCandidate.trim().length > 0
+        ? normalizeId(parentCandidate, index)
+        : null,
   };
 }
 

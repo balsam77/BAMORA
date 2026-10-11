@@ -52,11 +52,15 @@
 .container {
   display: grid;
   gap: var(--bamora-space-lg);
+  width: min(72rem, 100%);
+  margin-inline: auto;
 }
 
 .screen {
   display: grid;
   gap: var(--bamora-space-xl);
+  width: 100%;
+  overflow-x: clip;
 }
 
 .heroCard,
@@ -308,10 +312,123 @@
 
 .tileGrid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 .shopGrid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.shopLayout {
+  display: grid;
+  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+  gap: var(--bamora-space-lg);
+  align-items: start;
+}
+
+.shopContent {
+  display: grid;
+  gap: var(--bamora-space-lg);
+  min-width: 0;
+}
+
+.categorySidebar {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 1rem;
+  padding: var(--bamora-space-lg);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  box-shadow: var(--bamora-shadow-soft);
+}
+
+.sidebarHeader {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sidebarHint {
+  margin: 0;
+  color: var(--bamora-soft-white);
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
+
+.sidebarGroup {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.sidebarGroupTitle {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--bamora-gold-light);
+}
+
+.sidebarList {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.sidebarMainCard,
+.sidebarMainCardActive {
+  min-height: 4rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-soft-white);
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 2.65rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  text-align: start;
+  padding: 0.45rem 0.65rem;
+}
+
+.sidebarMainCardActive {
+  border-color: rgba(201, 169, 98, 0.6);
+  background: rgba(201, 169, 98, 0.18);
+  color: var(--bamora-gold);
+}
+
+.sidebarMainImage {
+  width: 2.65rem;
+  height: 2.65rem;
+  border-radius: 0.72rem;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.sidebarItem,
+.sidebarItemActive {
+  min-height: 2.45rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-soft-white);
+  cursor: pointer;
+  text-align: start;
+  padding: 0.5rem 0.8rem;
+}
+
+.sidebarItemActive {
+  border-color: rgba(201, 169, 98, 0.6);
+  background: rgba(201, 169, 98, 0.18);
+  color: var(--bamora-gold);
+}
+
+.sidebarEmpty {
+  margin: 0;
+  padding: 0.4rem 0.2rem;
+  color: var(--bamora-soft-white);
+  opacity: 0.8;
+  font-size: 0.9rem;
 }
 
 .productGrid,
@@ -328,6 +445,48 @@
 .offerCard,
 .profileCard {
   min-height: 14rem;
+}
+
+.categoryTile {
+  display: grid;
+  gap: 0.55rem;
+  padding: var(--bamora-space-sm);
+  border-radius: var(--bamora-radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  box-shadow: var(--bamora-shadow-soft);
+}
+
+.categoryImage {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  border-radius: 0.9rem;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.35);
+  display: block;
+}
+
+.categoryLabel {
+  margin: 0;
+  text-align: center;
+  direction: rtl;
+  color: var(--bamora-soft-white);
+  font-family: var(--bamora-font-display);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.productImage,
+.productPreviewImage,
+.mapPreviewImage {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  object-fit: cover;
+  border-radius: 0.9rem;
+  display: block;
 }
 
 .productAr {
@@ -358,6 +517,16 @@
   cursor: pointer;
 }
 
+.shopCategoryImage {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  border-radius: 0.9rem;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.35);
+  display: block;
+}
+
 .categoryTile,
 .shopCard {
   min-height: 9rem;
@@ -375,7 +544,10 @@
 .shopTitle,
 .profileAction {
   font-family: var(--bamora-font-display);
-  font-size: 1.05rem;
+  font-size: 0.92rem;
+  text-align: center;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .shopSub {
@@ -1085,6 +1257,306 @@
 @media (max-width: 420px) {
   .tileGrid,
   .shopGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .categoryTile,
+  .shopCard {
+    padding: 0.55rem;
+  }
+
+  .shopTitle {
+    font-size: 0.82rem;
+  }
+}
+
+/* Responsive and typography safety overrides */
+.container,
+.screen,
+.headerBar,
+.sectionHeader,
+.detailHeader,
+.profileHeaderTop,
+.profileHero,
+.profileOption,
+.helpSearch,
+.trackingHeader,
+.notificationCard,
+.checkoutPaymentBar,
+.faqItem,
+.settingsItem,
+.shopCard,
+.categoryTile,
+.productCard,
+.offerCard,
+.profileCard,
+.contactCard,
+.mirrorPanelHeader,
+.addressRow,
+.mirrorProductMeta {
+  min-width: 0;
+}
+
+.headerBar {
+  flex-wrap: wrap;
+}
+
+.brandTag {
+  font-size: clamp(0.88rem, 0.2vw + 0.83rem, 0.98rem);
+  line-height: 1.5;
+}
+
+.languageMenu {
+  inset-inline-start: 0;
+  left: auto;
+  max-width: min(14rem, calc(100vw - 2rem));
+}
+
+.heroCard h1,
+.introPanel h2 {
+  font-size: clamp(1.55rem, 2.5vw, 2.2rem);
+  line-height: 1.2;
+}
+
+.heroCard p,
+.introPanel p,
+.sectionHint,
+.sectionSubtext {
+  line-height: 1.6;
+  font-size: clamp(0.92rem, 0.2vw + 0.88rem, 1rem);
+}
+
+.sectionHeader {
+  flex-wrap: wrap;
+}
+
+.sectionHeader h2 {
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+  line-height: 1.25;
+}
+
+.discountHero {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.filterRow {
+  min-width: 0;
+}
+
+.filterSubmit,
+.filterChip,
+.sizeButton,
+.primaryButton,
+.secondaryButton,
+.contactButton,
+.paymentButton,
+.mirrorClose,
+.mirrorCategoryChip,
+.cartButton,
+.addressEditButton {
+  font-size: 0.96rem;
+  line-height: 1.35;
+  text-align: center;
+  max-width: 100%;
+}
+
+.tileGrid,
+.shopGrid {
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+.categoryTile,
+.shopCard {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: stretch;
+  justify-items: stretch;
+  gap: 0.6rem;
+}
+
+.categoryImage,
+.shopCategoryImage {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+}
+
+.categoryLabel,
+.shopTitle {
+  direction: inherit;
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  font-size: clamp(0.84rem, 0.2vw + 0.8rem, 0.95rem);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.minimalCategorySection {
+  padding-block: clamp(1rem, 2vw, 1.8rem);
+}
+
+.productAr,
+.categoryLabel,
+.shopTitle,
+.profileAction,
+.profileName,
+.profileEmail,
+.checkoutSubtitle,
+.contactTag,
+.successDescription,
+.successSummary p,
+.successDetails li span,
+.successDetails li strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.productAr {
+  direction: inherit;
+  text-align: start;
+  line-height: 1.5;
+}
+
+.shopTitle,
+.profileAction {
+  line-height: 1.45;
+}
+
+.profileName {
+  font-size: clamp(1.35rem, 1.8vw, 1.7rem);
+  line-height: 1.25;
+}
+
+.contactButton {
+  min-width: 8rem;
+}
+
+.successSummary div,
+.successDetails li {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 920px) {
+  .discountHero {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 720px) {
+  .heroCard,
+  .introPanel,
+  .filtersPanel,
+  .helpHeader,
+  .contactSection,
+  .productDetailCard,
+  .profileHero,
+  .trackingCard,
+  .reviewHeader,
+  .confirmationCard,
+  .mirrorPanel {
+    padding: var(--bamora-space-lg);
+  }
+  .orderItemDetailList {
+    display: grid;
+    gap: 0.7rem;
+  }
+  .orderItemDetailCard {
+    display: grid;
+    grid-template-columns: 3.5rem 1fr;
+    gap: 0.7rem;
+    align-items: start;
+    padding: 0.7rem;
+    border-radius: 0.8rem;
+    border: 1px solid rgba(192, 149, 88, 0.26);
+    background: rgba(255, 255, 255, 0.8);
+  }
+  .orderItemDetailCard p {
+    margin: 0.15rem 0;
+  }
+  .orderItemImage {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 0.6rem;
+    object-fit: cover;
+    border: 1px solid rgba(192, 149, 88, 0.24);
+  }
+
+  .filterRow {
+    grid-template-columns: 1fr;
+  }
+
+  .tileGrid,
+  .shopGrid,
+  .productGrid,
+  .offerGrid,
+  .profileGrid,
+  .mirrorProductGrid {
+    grid-template-columns: repeat(auto-fit, minmax(10.2rem, 1fr));
+  }
+
+  .profileHero {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .shopLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .categorySidebar {
+    position: static;
+    top: auto;
+  }
+
+  .sidebarList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sidebarMainCard,
+  .sidebarMainCardActive {
+    grid-template-columns: 2.35rem minmax(0, 1fr);
+    min-height: 3.5rem;
+  }
+
+  .sidebarMainImage {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .productGrid,
+  .offerGrid,
+  .profileGrid,
+  .mirrorProductGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tileGrid,
+  .shopGrid {
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  }
+
+  .categoryTile,
+  .shopCard,
+  .productCard,
+  .offerCard,
+  .profileCard {
+    min-height: 0;
+  }
+
+  .sidebarList {
+    grid-template-columns: 1fr;
   }
 }

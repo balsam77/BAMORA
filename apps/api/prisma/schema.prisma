@@ -27,7 +27,8 @@ enum UserStatus {
 
 enum MerchantStatus {
   PENDING
-  APPROVED
+  ACTIVE
+  REJECTED
   SUSPENDED
 }
 
@@ -116,16 +117,52 @@ enum NotificationType {
   SUPPORT
 }
 
+enum MerchantPlanType {
+  MONTHLY_SUBSCRIPTION
+  BAMORA_COMMISSION
+  TEN_ORDER_LIMIT
+}
+
+enum PlanApprovalStatus {
+  NONE
+  PENDING_PLAN_APPROVAL
+  ACTIVE
+  REJECTED
+}
+
+enum SubscriptionPaymentStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+}
+
+enum BamoraChargeStatus {
+  PENDING
+  CONFIRMED
+  OVERDUE
+  WAIVED
+}
+
+enum MerchantAttentionState {
+  NORMAL
+  PENDING_REVIEW
+  PENDING_BAMORA_PAYMENT
+  DELAYED
+}
+
 enum OtpPurpose {
   EMAIL_VERIFICATION
   PASSWORD_RESET
 }
 
+
 model User {
   id           String     @id @default(cuid())
   email        String     @unique
   phone        String?
-  passwordHash String     @map("password_hash")
+  passwordHash String? @map("password_hash")
+  nationalIdHash String?  @unique @map("national_id_hash")
+  nationalIdLast3 String? @map("national_id_last3")
   role         UserRole
   status       UserStatus @default(ACTIVE)
   locale       String     @default("en")
@@ -184,6 +221,10 @@ model Merchant {
   coupons            Coupon[]
   mediaAssets        MediaAsset[]
   subOrderShipments  Shipment[]
+  plan               MerchantPlan?
+  bamoraCharges      MerchantBamoraCharge[]
+  activityLogs       MerchantActivityLog[]
+  adminAlerts        AdminAlert[]
 
   @@map("merchants")
 }
@@ -450,6 +491,8 @@ model Order {
   statusHistory OrderStatusHistory[]
   couponRedemptions CouponRedemption[]
   shipments Shipment[]
+  bamoraCharges MerchantBamoraCharge[]
+  adminAlerts AdminAlert[]
 
   @@index([customerId, createdAt(sort: Desc)])
   @@map("orders")
@@ -462,6 +505,7 @@ model OrderItem {
   quantity      Int
   unitPrice     Decimal @map("unit_price") @db.Decimal(10, 2)
   titleSnapshot String  @map("title_snapshot")
+  imageSnapshot String  @default("") @map("image_snapshot")
   colorSnapshot String  @map("color_snapshot")
   sizeSnapshot  String  @map("size_snapshot")
 
@@ -480,6 +524,9 @@ model MerchantSubOrder {
   status             SubOrderStatus @default(PENDING)
   fulfillmentStatus  SubOrderStatus @default(PENDING) @map("fulfillment_status")
   subtotal           Decimal        @db.Decimal(10, 2)
+  attentionState     MerchantAttentionState @default(NORMAL) @map("attention_state")
+  processByAt        DateTime?      @map("process_by_at")
+  delayedAt          DateTime?      @map("delayed_at")
   createdAt          DateTime       @default(now()) @map("created_at")
   updatedAt          DateTime       @updatedAt @map("updated_at")
 
@@ -487,9 +534,102 @@ model MerchantSubOrder {
   merchant Merchant       @relation(fields: [merchantId], references: [id])
   items    SubOrderItem[]
   shipment Shipment?
+  bamoraCharge MerchantBamoraCharge?
 
   @@index([merchantId, status])
   @@map("merchant_sub_orders")
+}
+
+model MerchantPlan {
+  id                       String                    @id @default(cuid())
+  merchantId               String                    @unique @map("merchant_id")
+  selectedPlan             MerchantPlanType?
+  approvalStatus           PlanApprovalStatus        @default(NONE) @map("approval_status")
+  requestedAt              DateTime?                 @map("requested_at")
+  approvedAt               DateTime?                 @map("approved_at")
+  rejectedAt               DateTime?                 @map("rejected_at")
+  reviewedByAdminId        String?                   @map("reviewed_by_admin_id")
+  monthlySubscriptionAmount Decimal                  @default(1000) @map("monthly_subscription_amount") @db.Decimal(10, 2)
+  subscriptionPaymentStatus SubscriptionPaymentStatus @default(PENDING) @map("subscription_payment_status")
+  subscriptionActiveUntil  DateTime?                 @map("subscription_active_until")
+  commissionRate           Decimal                   @default(0.20) @map("commission_rate") @db.Decimal(5, 4)
+  tenOrderLimit            Int                       @default(10) @map("ten_order_limit")
+  tenOrderCycleCount       Int                       @default(0) @map("ten_order_cycle_count")
+  bamoraFeesOwed           Decimal                   @default(0) @map("bamora_fees_owed") @db.Decimal(10, 2)
+  bamoraFeesPaid           Decimal                   @default(0) @map("bamora_fees_paid") @db.Decimal(10, 2)
+  outstandingBalance       Decimal                   @default(0) @map("outstanding_balance") @db.Decimal(10, 2)
+  blockedAt                DateTime?                 @map("blocked_at")
+  reopenedAt               DateTime?                 @map("reopened_at")
+  notes                    String?
+  createdAt                DateTime                  @default(now()) @map("created_at")
+  updatedAt                DateTime                  @updatedAt @map("updated_at")
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("merchant_plans")
+}
+
+model MerchantBamoraCharge {
+  id               String             @id @default(cuid())
+  merchantId       String             @map("merchant_id")
+  orderId          String             @map("order_id")
+  subOrderId       String             @unique @map("sub_order_id")
+  planType         MerchantPlanType   @map("plan_type")
+  orderAmount      Decimal            @map("order_amount") @db.Decimal(10, 2)
+  bamoraFee        Decimal            @map("bamora_fee") @db.Decimal(10, 2)
+  paymentStatus    BamoraChargeStatus @default(PENDING) @map("payment_status")
+  remainingAmount  Decimal            @map("remaining_amount") @db.Decimal(10, 2)
+  dueAt            DateTime?          @map("due_at")
+  paidAt           DateTime?          @map("paid_at")
+  confirmedAt      DateTime?          @map("confirmed_at")
+  confirmedByAdminId String?          @map("confirmed_by_admin_id")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  merchant Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  order    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  subOrder MerchantSubOrder @relation(fields: [subOrderId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId, paymentStatus])
+  @@index([orderId])
+  @@map("merchant_bamora_charges")
+}
+
+model MerchantActivityLog {
+  id          String   @id @default(cuid())
+  merchantId  String   @map("merchant_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  oldValue    Json?    @map("old_value")
+  newValue    Json?    @map("new_value")
+  details     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId, createdAt(sort: Desc)])
+  @@map("merchant_activity_logs")
+}
+
+model AdminAlert {
+  id          String   @id @default(cuid())
+  level       String   @default("warning")
+  code        String
+  title       String
+  body        String   @db.Text
+  merchantId  String?  @map("merchant_id")
+  orderId     String?  @map("order_id")
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  merchant Merchant? @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+  order    Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([resolvedAt, createdAt(sort: Desc)])
+  @@index([merchantId])
+  @@index([orderId])
+  @@map("admin_alerts")
 }
 
 model SubOrderItem {

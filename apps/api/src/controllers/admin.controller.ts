@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import { CurrentUser, type AuthenticatedUser } from "../common/current-user.decorator";
 import { Roles } from "../common/roles.decorator";
 import { CommerceService } from "../services/commerce.service";
 
@@ -18,8 +19,41 @@ export class AdminController {
   }
 
   @Patch("merchants/:id/status")
-  updateMerchantStatus(@Param("id") id: string, @Body() body: { status: "pending" | "approved" | "suspended" }) {
+  updateMerchantStatus(@Param("id") id: string, @Body() body: { status: "pending" | "active" | "rejected" | "suspended" }) {
     return this.commerceService.updateMerchantStatus(id, body.status);
+  }
+
+  @Get("merchants/pending-plan-approvals")
+  pendingPlanApprovals() {
+    return this.commerceService.listPendingPlanApprovals();
+  }
+
+  @Patch("merchants/:id/plan")
+  reviewMerchantPlan(
+    @CurrentUser() user: AuthenticatedUser | null,
+    @Param("id") merchantId: string,
+    @Body() body: {
+      decision: "approve" | "reject";
+      notes?: string;
+      subscriptionMonths?: number;
+      subscriptionPaymentStatus?: "pending" | "active" | "expired";
+    },
+  ) {
+    return this.commerceService.reviewMerchantPlan(
+      merchantId,
+      {
+        decision: body.decision,
+        notes: body.notes,
+        subscriptionMonths: body.subscriptionMonths,
+        subscriptionPaymentStatus: body.subscriptionPaymentStatus,
+      },
+      user ?? undefined,
+    );
+  }
+
+  @Patch("merchants/:id/reopen")
+  reopenMerchant(@Param("id") merchantId: string) {
+    return this.commerceService.reopenMerchantAfterPayment(merchantId);
   }
 
   @Delete("merchants/:id")
@@ -47,6 +81,11 @@ export class AdminController {
     return this.commerceService.listAdminOrders();
   }
 
+  @Get("orders/delayed")
+  delayedOrders() {
+    return this.commerceService.listDelayedOrders();
+  }
+
   @Patch("orders/:id/status")
   updateOrderStatus(
     @Param("id") id: string,
@@ -69,6 +108,19 @@ export class AdminController {
   @Post("orders/:id/payment")
   createOrderPayment(@Param("id") id: string) {
     return this.commerceService.createPaymentForOrder(id);
+  }
+
+  @Get("payments/bamora")
+  bamoraPayments() {
+    return this.commerceService.listBamoraCharges();
+  }
+
+  @Patch("payments/bamora/:id/confirm")
+  confirmBamoraPayment(
+    @CurrentUser() user: AuthenticatedUser | null,
+    @Param("id") id: string,
+  ) {
+    return this.commerceService.confirmBamoraCharge(id, user ?? undefined);
   }
 
   @Patch("orders/:id/payment-status")
@@ -127,6 +179,21 @@ export class AdminController {
   @Get("support-tickets")
   supportTickets() {
     return this.commerceService.listSupportTickets();
+  }
+
+  @Get("alerts")
+  alerts() {
+    return this.commerceService.listAdminAlerts();
+  }
+
+  @Patch("alerts/:id/resolve")
+  resolveAlert(@Param("id") id: string) {
+    return this.commerceService.resolveAdminAlert(id);
+  }
+
+  @Get("activity/merchants")
+  merchantActivity() {
+    return this.commerceService.listMerchantActivity();
   }
 
   @Patch("support-tickets/:id/assign")

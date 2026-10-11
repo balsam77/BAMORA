@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
 import { CurrentUser, type AuthenticatedUser } from "../common/current-user.decorator";
 import { Roles } from "../common/roles.decorator";
 import { CommerceService } from "../services/commerce.service";
@@ -9,20 +9,20 @@ export class MerchantController {
   constructor(private readonly commerceService: CommerceService) {}
 
   @Get("dashboard")
-  dashboard(@CurrentUser() user: AuthenticatedUser | null, @Query("merchantId") merchantId?: string) {
-    return this.commerceService.merchantDashboard(user ?? undefined, merchantId);
+  dashboard(@CurrentUser() user: AuthenticatedUser | null) {
+    return this.commerceService.merchantDashboard(user ?? undefined);
   }
 
   @Get("products")
-  async products(@CurrentUser() user: AuthenticatedUser | null, @Query("merchantId") merchantId?: string) {
-    const dashboard = await this.commerceService.merchantDashboard(user ?? undefined, merchantId);
+  async products(@CurrentUser() user: AuthenticatedUser | null) {
+    const dashboard = await this.commerceService.merchantDashboard(user ?? undefined);
     return dashboard.products;
   }
 
   @Post("products")
   createProduct(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Body() body: { merchantId: string; name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
+    @Body() body: { name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
   ) {
     return this.commerceService.merchantUpsertProduct(body, user ?? undefined);
   }
@@ -31,30 +31,25 @@ export class MerchantController {
   updateProduct(
     @CurrentUser() user: AuthenticatedUser | null,
     @Param("id") id: string,
-    @Body() body: { merchantId: string; name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
+    @Body() body: { name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
   ) {
     return this.commerceService.merchantUpsertProduct({ id, ...body }, user ?? undefined);
   }
 
   @Delete("products/:id")
-  async deleteProduct(
-    @CurrentUser() user: AuthenticatedUser | null,
-    @Query("merchantId") merchantId: string | undefined,
-    @Param("id") id: string,
-  ) {
-    return { deleted: await this.commerceService.merchantDeleteProduct(id, user ?? undefined, merchantId) };
+  async deleteProduct(@CurrentUser() user: AuthenticatedUser | null, @Param("id") id: string) {
+    return { deleted: await this.commerceService.merchantDeleteProduct(id, user ?? undefined) };
   }
 
   @Get("orders")
-  async orders(@CurrentUser() user: AuthenticatedUser | null, @Query("merchantId") merchantId?: string) {
-    const dashboard = await this.commerceService.merchantDashboard(user ?? undefined, merchantId);
+  async orders(@CurrentUser() user: AuthenticatedUser | null) {
+    const dashboard = await this.commerceService.merchantDashboard(user ?? undefined);
     return dashboard.orders;
   }
 
   @Patch("orders/:id/status")
   updateOrderStatus(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Query("merchantId") merchantId: string | undefined,
     @Param("id") id: string,
     @Body() body: { status: "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "canceled" | "return_requested" | "returned" },
   ) {
@@ -69,13 +64,12 @@ export class MerchantController {
       returned: "RETURNED",
     } as const;
 
-    return this.commerceService.merchantUpdateOrderStatus(id, statusMap[body.status], user ?? undefined, merchantId);
+    return this.commerceService.merchantUpdateOrderStatus(id, statusMap[body.status], user ?? undefined);
   }
 
   @Patch("orders/:id/shipping")
   updateShipment(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Query("merchantId") merchantId: string | undefined,
     @Param("id") id: string,
     @Body() body: { carrierCode: string; trackingNumber: string; shippingCost: number; status: "PENDING" | "LABEL_CREATED" | "IN_TRANSIT" | "DELIVERED" | "RETURNED" | "EXCEPTION" | "CANCELLED" },
   ) {
@@ -88,7 +82,6 @@ export class MerchantController {
         status: body.status,
       },
       user ?? undefined,
-      merchantId,
     );
   }
 
@@ -97,9 +90,27 @@ export class MerchantController {
     return this.commerceService.createOffer(body);
   }
 
+  @Get("coupons")
+  listCoupons() {
+    return this.commerceService.listCoupons();
+  }
+
   @Get("inventory/alerts")
-  async inventoryAlerts(@CurrentUser() user: AuthenticatedUser | null, @Query("merchantId") merchantId?: string) {
-    const dashboard = await this.commerceService.merchantDashboard(user ?? undefined, merchantId);
+  async inventoryAlerts(@CurrentUser() user: AuthenticatedUser | null) {
+    const dashboard = await this.commerceService.merchantDashboard(user ?? undefined);
     return dashboard.inventory;
+  }
+
+  @Get("plan")
+  plan(@CurrentUser() user: AuthenticatedUser | null) {
+    return this.commerceService.getMerchantPlan(user ?? undefined);
+  }
+
+  @Post("plan")
+  requestPlan(
+    @CurrentUser() user: AuthenticatedUser | null,
+    @Body() body: { plan: "monthly_subscription" | "bamora_commission" | "ten_order_limit" },
+  ) {
+    return this.commerceService.requestMerchantPlan(body.plan, user ?? undefined);
   }
 }

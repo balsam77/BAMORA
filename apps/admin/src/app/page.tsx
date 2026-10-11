@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ADMIN_NAME_KEY,
+  type AdminAlertRecord,
   clearRoleSession,
   createAdminRepository,
   getCurrentRole,
@@ -12,12 +13,17 @@ import {
   type AdminOrderRecord,
   type AdminProductRecord,
   type AppRole,
+  type BamoraFeeRecord,
   type BroadcastRecord,
   type CategoryRecord,
   type GlobalOfferRecord,
+  type MerchantActivityRecord,
   type MerchantApprovalStatus,
   type MerchantOrderStatus,
+  type MerchantPlanChoice,
+  type MerchantAttentionStatus,
   type MerchantRecord,
+  type PlanApprovalRecord,
   type PlatformStats,
   type PlatformUserRecord,
   type PlatformUserStatus,
@@ -26,7 +32,7 @@ import {
 } from "@bamora/platform";
 import styles from "./page.module.css";
 
-type AdminTab = "overview" | "merchants" | "products" | "orders" | "users" | "support" | "broadcast" | "categories" | "settings";
+type AdminTab = "overview" | "merchants" | "products" | "orders" | "monitoring" | "users" | "support" | "broadcast" | "categories" | "settings";
 
 type CategoryFormState = {
   id: string;
@@ -41,6 +47,7 @@ const tabs: Array<{ id: AdminTab; label: string; icon: string }> = [
   { id: "merchants", label: "إدارة التجار", icon: "🏪" },
   { id: "products", label: "جميع المنتجات", icon: "🧾" },
   { id: "orders", label: "جميع الطلبات", icon: "🚚" },
+  { id: "monitoring", label: "المراقبة", icon: "🛡️" },
   { id: "users", label: "إدارة المستخدمين", icon: "👥" },
   { id: "support", label: "الدعم والشكاوى", icon: "🆘" },
   { id: "broadcast", label: "الإشعارات والعروض", icon: "📢" },
@@ -50,7 +57,7 @@ const tabs: Array<{ id: AdminTab; label: string; icon: string }> = [
 
 const merchantStatusLabel: Record<MerchantApprovalStatus, string> = {
   pending: "بانتظار الموافقة",
-  approved: "مقبول",
+  active: "مقبول",
   rejected: "مرفوض",
   suspended: "موقوف",
 };
@@ -74,8 +81,23 @@ const supportStatusLabel: Record<SupportTicketStatus, string> = {
   resolved: "تم الحل",
 };
 
+const planLabel: Record<MerchantPlanChoice, string> = {
+  monthly_subscription: "الخطة الشهرية",
+  bamora_commission: "BAMORA Fee 20%",
+  ten_order_limit: "خطة 10 طلبات",
+};
+
+const attentionLabel: Record<MerchantAttentionStatus, string> = {
+  normal: "طبيعي",
+  pending_review: "قيد المراجعة",
+  pending_bamora_payment: "بانتظار سداد BAMORA Fee",
+  delayed: "متأخر",
+};
+
 const defaultStats: PlatformStats = {
   merchantCount: 0,
+  customerCount: 0,
+  subscriberCount: 0,
   dailyOrders: 0,
   monthlyOrders: 0,
   platformRevenue: "₪0",
@@ -89,18 +111,27 @@ const emptyCategory: CategoryFormState = {
   parentId: "",
 };
 
-const adminRepository = createAdminRepository();
+const adminRepository = createAdminRepository("api");
+const ENABLE_DEMO_MODE = process.env.NEXT_PUBLIC_ENABLE_DEMO_MODE === "1";
 
 function AdminPageContent() {
   const searchParams = useSearchParams();
   const [ready, setReady] = useState(false);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [adminEmail, setAdminEmail] = useState("");
   const [adminName, setAdminName] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [loginNotice, setLoginNotice] = useState("");
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [orderFilter, setOrderFilter] = useState<MerchantOrderStatus | "all">("all");
   const [merchants, setMerchants] = useState<MerchantRecord[]>([]);
   const [products, setProducts] = useState<AdminProductRecord[]>([]);
   const [orders, setOrders] = useState<AdminOrderRecord[]>([]);
+  const [pendingPlanApprovals, setPendingPlanApprovals] = useState<PlanApprovalRecord[]>([]);
+  const [bamoraFees, setBamoraFees] = useState<BamoraFeeRecord[]>([]);
+  const [delayedOrders, setDelayedOrders] = useState<AdminOrderRecord[]>([]);
+  const [alerts, setAlerts] = useState<AdminAlertRecord[]>([]);
+  const [merchantActivity, setMerchantActivity] = useState<MerchantActivityRecord[]>([]);
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [users, setUsers] = useState<PlatformUserRecord[]>([]);
   const [supportTickets, setSupportTickets] = useState<SupportTicketRecord[]>([]);
@@ -121,6 +152,11 @@ function AdminPageContent() {
     setMerchants(data.merchants);
     setProducts(data.products);
     setOrders(data.orders);
+    setPendingPlanApprovals(data.pendingPlanApprovals);
+    setBamoraFees(data.bamoraFees);
+    setDelayedOrders(data.delayedOrders);
+    setAlerts(data.alerts);
+    setMerchantActivity(data.merchantActivity);
     setCategories(data.categories);
     setUsers(data.users);
     setSupportTickets(data.supportTickets);
@@ -130,7 +166,7 @@ function AdminPageContent() {
   };
 
   useEffect(() => {
-    const demoMode = searchParams.get("demo") === "1";
+    const demoMode = ENABLE_DEMO_MODE && searchParams.get("demo") === "1";
     if (demoMode) {
       const demoName = "BAMORA Super Admin";
       window.localStorage.setItem(ROLE_KEY, "super-admin");
@@ -163,26 +199,43 @@ function AdminPageContent() {
   }, [orders, orderFilter]);
 
   const loginAsAdmin = async () => {
-    const normalizedName = adminName.trim();
-    if (!normalizedName) {
+    if (!adminEmail.trim() || !adminPassword.trim()) {
+      setLoginNotice("أكمل الحقول المطلوبة.");
       return;
     }
 
-    setCurrentRole("super-admin");
-    window.localStorage.setItem(ADMIN_NAME_KEY, normalizedName);
-    setRole("super-admin");
-    setActiveTab("overview");
-    await loadDashboard();
+    try {
+      const session = await adminRepository.login({
+        email: adminEmail.trim().toLowerCase(),
+        password: adminPassword.trim(),
+      });
+      setCurrentRole("super-admin");
+      setAdminName(window.localStorage.getItem(ADMIN_NAME_KEY) ?? session.email);
+      setRole(session.role);
+      setActiveTab("overview");
+      setLoginNotice("");
+      await loadDashboard();
+    } catch (error) {
+      setLoginNotice(error instanceof Error ? error.message : "تعذر تسجيل دخول المسؤول.");
+    }
   };
 
   const logout = () => {
     window.localStorage.removeItem(ADMIN_NAME_KEY);
     clearRoleSession();
     setRole(null);
+    setAdminEmail("");
     setAdminName("");
+    setAdminPassword("");
+    setLoginNotice("");
     setMerchants([]);
     setProducts([]);
     setOrders([]);
+    setPendingPlanApprovals([]);
+    setBamoraFees([]);
+    setDelayedOrders([]);
+    setAlerts([]);
+    setMerchantActivity([]);
     setCategories([]);
     setUsers([]);
     setSupportTickets([]);
@@ -200,6 +253,30 @@ function AdminPageContent() {
     await adminRepository.deleteMerchant(id);
     await loadDashboard();
     setPlatformNotice("تم حذف المتجر.");
+  };
+
+  const reviewMerchantPlan = async (id: string, decision: "approve" | "reject") => {
+    await adminRepository.reviewMerchantPlan(id, decision);
+    await loadDashboard();
+    setPlatformNotice(decision === "approve" ? "تمت الموافقة على الخطة." : "تم رفض الخطة.");
+  };
+
+  const confirmBamoraPayment = async (id: string) => {
+    await adminRepository.confirmBamoraPayment(id);
+    await loadDashboard();
+    setPlatformNotice("تم تأكيد سداد BAMORA Fee.");
+  };
+
+  const reopenMerchant = async (id: string) => {
+    await adminRepository.reopenMerchant(id);
+    await loadDashboard();
+    setPlatformNotice("تمت إعادة فتح التاجر بعد التسوية.");
+  };
+
+  const resolveAlert = async (id: string) => {
+    await adminRepository.resolveAlert(id);
+    await loadDashboard();
+    setPlatformNotice("تمت معالجة التنبيه.");
   };
 
   const deleteProduct = async (id: string) => {
@@ -323,17 +400,28 @@ function AdminPageContent() {
         <section className={styles.loginCard}>
           <p className={styles.brand}>BAMORA</p>
           <h1>لوحة إدارة BAMORA</h1>
-          <p>أدخل اسم المسؤول للدخول إلى لوحة الإدارة العليا.</p>
+          <label htmlFor="admin-email">Email</label>
           <input
+            id="admin-email"
             type="text"
             className={styles.inputField}
-            placeholder="اسم المسؤول"
-            value={adminName}
-            onChange={(event) => setAdminName(event.target.value)}
+            placeholder="bamora"
+            value={adminEmail}
+            onChange={(event) => setAdminEmail(event.target.value)}
+          />
+          <label htmlFor="admin-password">Password</label>
+          <input
+            id="admin-password"
+            type="password"
+            className={styles.inputField}
+            placeholder="balsam99"
+            value={adminPassword}
+            onChange={(event) => setAdminPassword(event.target.value)}
           />
           <button type="button" className={styles.primaryButton} onClick={loginAsAdmin}>
             دخول Super Admin
           </button>
+          {loginNotice ? <p className={styles.inlineNote}>{loginNotice}</p> : null}
         </section>
       </div>
     );
@@ -377,9 +465,15 @@ function AdminPageContent() {
         {activeTab === "overview" && (
           <section className={styles.grid}>
             <article className={styles.statCard}><p>إجمالي التجار</p><strong>{stats.merchantCount}</strong></article>
+            <article className={styles.statCard}><p>إجمالي الزبائن</p><strong>{stats.customerCount}</strong></article>
+            <article className={styles.statCard}><p>إجمالي المشتركين</p><strong>{stats.subscriberCount}</strong></article>
             <article className={styles.statCard}><p>طلبات اليوم</p><strong>{stats.dailyOrders}</strong></article>
             <article className={styles.statCard}><p>طلبات الشهر</p><strong>{stats.monthlyOrders}</strong></article>
             <article className={styles.statCard}><p>أرباح المنصة</p><strong>{stats.platformRevenue}</strong></article>
+            <article className={styles.statCard}><p>خطط بانتظار الموافقة</p><strong>{pendingPlanApprovals.length}</strong></article>
+            <article className={styles.statCard}><p>طلبات متأخرة</p><strong>{delayedOrders.length}</strong></article>
+            <article className={styles.statCard}><p>تنبيهات مفتوحة</p><strong>{alerts.length}</strong></article>
+            <article className={styles.statCard}><p>دفعات BAMORA المعلقة</p><strong>{bamoraFees.filter((item) => item.paymentStatus !== "CONFIRMED").length}</strong></article>
           </section>
         )}
 
@@ -393,6 +487,8 @@ function AdminPageContent() {
                   <tr>
                     <th>المتجر</th>
                     <th>الحالة</th>
+                    <th>الخطة</th>
+                    <th>المستحق</th>
                     <th>الطلبات</th>
                     <th>الإيراد</th>
                     <th>إجراءات</th>
@@ -403,12 +499,15 @@ function AdminPageContent() {
                     <tr key={merchant.id}>
                       <td><strong>{merchant.name}</strong><span>{merchant.id}</span></td>
                       <td><span className={`${styles.badge} ${styles[`merchant${merchant.status}`]}`}>{merchantStatusLabel[merchant.status]}</span></td>
+                      <td>{merchant.selectedPlan ? planLabel[merchant.selectedPlan] : "-"}</td>
+                      <td>{merchant.outstandingBalance ?? "₪0 ILS"}</td>
                       <td>{merchant.orders}</td>
                       <td>{merchant.revenue}</td>
                       <td className={styles.actionsCell}>
-                        <button type="button" className={styles.tableButton} onClick={() => updateMerchantStatus(merchant.id, "approved")}>قبول</button>
+                        <button type="button" className={styles.tableButton} onClick={() => updateMerchantStatus(merchant.id, "active")}>قبول</button>
                         <button type="button" className={styles.tableButton} onClick={() => updateMerchantStatus(merchant.id, "rejected")}>رفض</button>
                         <button type="button" className={styles.tableButton} onClick={() => updateMerchantStatus(merchant.id, "suspended")}>إيقاف</button>
+                        <button type="button" className={styles.tableButton} onClick={() => reopenMerchant(merchant.id)}>إعادة فتح</button>
                         <button type="button" className={styles.tableButton} onClick={() => deleteMerchant(merchant.id)}>حذف</button>
                       </td>
                     </tr>
@@ -474,9 +573,14 @@ function AdminPageContent() {
                     <th>رقم الطلب</th>
                     <th>التاجر</th>
                     <th>العميل</th>
+                    <th>تفاصيل المنتجات</th>
                     <th>الحالة</th>
+                    <th>المتابعة</th>
+                    <th>BAMORA Fee</th>
+                    <th>السداد</th>
                     <th>تحديث الحالة</th>
                     <th>الإجمالي</th>
+                    <th>الوقت</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -485,7 +589,24 @@ function AdminPageContent() {
                       <td>{order.id}</td>
                       <td>{order.merchant}</td>
                       <td>{order.customer}</td>
+                      <td>
+                        <div className={styles.orderItemList}>
+                          {(order.items ?? []).map((item) => (
+                            <article key={item.id} className={styles.orderItemCard}>
+                              {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className={styles.orderItemImage} loading="lazy" /> : null}
+                              <div>
+                                <strong>{item.title}</strong>
+                                <span>{item.quantity} × {item.unitPrice}</span>
+                                <span>{item.size} • {item.color}</span>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      </td>
                       <td><span className={`${styles.badge} ${styles[`order${order.status}`]}`}>{orderStatusLabel[order.status]}</span></td>
+                      <td>{order.attentionState ? attentionLabel[order.attentionState] : "طبيعي"}</td>
+                      <td>{order.bamoraFee ?? "-"}</td>
+                      <td>{order.paymentStatus ?? "-"}</td>
                       <td>
                         <select
                           className={`${styles.inputField} ${styles.inputSelect}`}
@@ -500,6 +621,148 @@ function AdminPageContent() {
                         </select>
                       </td>
                       <td>{order.total}</td>
+                      <td>{order.createdAt ?? "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "monitoring" && (
+          <section className={styles.panel}>
+            <h2>المراقبة والتحكم</h2>
+            <div className={styles.grid}>
+              <article className={styles.softCard}>
+                <p>طلبات الخطط</p>
+                {pendingPlanApprovals.slice(0, 4).map((item) => (
+                  <p key={item.id}>{item.merchant} - {item.selectedPlan ? planLabel[item.selectedPlan] : "-"}</p>
+                ))}
+              </article>
+              <article className={styles.softCard}>
+                <p>الطلبات المتأخرة</p>
+                {delayedOrders.slice(0, 4).map((item) => (
+                  <p key={item.id}>{item.id} - {item.merchant}</p>
+                ))}
+              </article>
+              <article className={styles.softCard}>
+                <p>تنبيهات مفتوحة</p>
+                {alerts.slice(0, 4).map((item) => (
+                  <p key={item.id}>{item.title}</p>
+                ))}
+              </article>
+              <article className={styles.softCard}>
+                <p>أحدث نشاط</p>
+                {merchantActivity.slice(0, 4).map((item) => (
+                  <p key={item.id}>{item.merchant} - {item.action}</p>
+                ))}
+              </article>
+            </div>
+
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>التاجر</th>
+                    <th>الخطة</th>
+                    <th>الحالة</th>
+                    <th>الوقت</th>
+                    <th>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingPlanApprovals.map((item) => (
+                    <tr key={item.id}>
+                      <td><strong>{item.merchant}</strong><span>{item.email}</span></td>
+                      <td>{item.selectedPlan ? planLabel[item.selectedPlan] : "-"}</td>
+                      <td>{item.approvalStatus}</td>
+                      <td>{item.requestedAt}</td>
+                      <td className={styles.actionsCell}>
+                        <button type="button" className={styles.tableButton} onClick={() => reviewMerchantPlan(item.merchantId, "approve")}>موافقة</button>
+                        <button type="button" className={styles.tableButton} onClick={() => reviewMerchantPlan(item.merchantId, "reject")}>رفض</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>التاجر</th>
+                    <th>رقم الطلب</th>
+                    <th>المبلغ</th>
+                    <th>BAMORA Fee</th>
+                    <th>السداد</th>
+                    <th>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bamoraFees.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.merchant}</td>
+                      <td>{item.orderNumber}</td>
+                      <td>{item.orderAmount}</td>
+                      <td>{item.bamoraFee}</td>
+                      <td>{item.paymentStatus}</td>
+                      <td className={styles.actionsCell}>
+                        <button type="button" className={styles.tableButton} onClick={() => confirmBamoraPayment(item.id)}>تأكيد السداد</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>التنبيه</th>
+                    <th>التاجر</th>
+                    <th>الطلب</th>
+                    <th>الوقت</th>
+                    <th>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {alerts.map((item) => (
+                    <tr key={item.id}>
+                      <td><strong>{item.title}</strong><span>{item.body}</span></td>
+                      <td>{item.merchant}</td>
+                      <td>{item.orderNumber}</td>
+                      <td>{item.createdAt}</td>
+                      <td className={styles.actionsCell}>
+                        <button type="button" className={styles.tableButton} onClick={() => resolveAlert(item.id)}>حل</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>التاجر</th>
+                    <th>الحدث</th>
+                    <th>الكيان</th>
+                    <th>التفاصيل</th>
+                    <th>الوقت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {merchantActivity.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.merchant}</td>
+                      <td>{item.action}</td>
+                      <td>{item.entityType}</td>
+                      <td>{item.details || item.entityId}</td>
+                      <td>{item.createdAt}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -531,7 +794,7 @@ function AdminPageContent() {
                       <td>{user.email}</td>
                       <td>{user.role}</td>
                       <td>
-                        <span className={`${styles.badge} ${styles[`merchant${user.status === "active" ? "approved" : "suspended"}`]}`}>
+                        <span className={`${styles.badge} ${styles[`merchant${user.status === "active" ? "active" : "suspended"}`]}`}>
                           {userStatusLabel[user.status]}
                         </span>
                       </td>

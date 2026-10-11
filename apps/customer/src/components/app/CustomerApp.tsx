@@ -19,6 +19,7 @@ import {
 import { BrandName } from "@/components/brand/BrandName";
 import {
   applyRuntimeTranslations,
+  getLanguagePickerLabel,
   getLanguageLabel,
   getSavedLanguage,
   persistLanguage,
@@ -40,7 +41,11 @@ type Product = {
   detail: string;
   reviewCount: number;
   averageRating: number;
+  category?: string;
+  imageUrl?: string;
 };
+
+type CategorySelection = Pick<DynamicCategory, "id" | "titleAr">;
 
 type MirrorCategory = "women" | "men" | "accessories" | "fragrance";
 
@@ -71,8 +76,247 @@ const logisticsImages = {
   addressMap: "https://images.unsplash.com/photo-1526778548025-fa2f459cd5ce?auto=format&fit=crop&w=1200&q=80",
 } as const;
 
-function getProductImage(productId: string) {
-  return imageByProductId[productId] ?? "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=80";
+function normalizeCategoryKey(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[_]+/g, "-");
+}
+
+function buildAuthSecret(email: string, phone: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const digits = phone.replace(/\D/g, "");
+  const phoneSeed = digits.slice(-8).padStart(8, "0");
+  return `bamora-${normalizedEmail}-${phoneSeed}`;
+}
+
+function getCategoryImage(category: Pick<DynamicCategory, "id" | "titleAr">) {
+  const key = `${normalizeCategoryKey(category.id)} ${normalizeCategoryKey(category.titleAr)}`;
+
+  if (/(\bwomen\b|\bwomens\b|\bwoman\b|نسائي|نساء|مرأ|امرا|حريمي)/.test(key)) {
+    return "/women.png";
+  }
+
+  if (/(\bmen\b|\bmens\b|رجال|رجالي)/.test(key)) {
+    return "/men.png";
+  }
+
+  if (/(shoes|shoe|sneaker|احذ|أحذ)/.test(key)) {
+    return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(bags|bag|handbag|شنط|شنطاتي|حقيب|حقائب)/.test(key)) {
+    return "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(glasses|eyewear|sunglasses|نظار|نظارات)/.test(key)) {
+    return "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(beauty|makeup|cosmetic|cosmetics|مكياج|تجميل|جمال|عناية)/.test(key)) {
+    return "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(perfumes|perfume|fragrance|عطور|عطر)/.test(key)) {
+    return "/perfumes.png";
+  }
+
+  if (/(kids|اطفال|أطفال|baby|child)/.test(key)) {
+    return "/kids.png";
+  }
+
+  if (/(electronics|الكترونيات|إلكترونيات|mobile|tech)/.test(key)) {
+    return "/electronics.png";
+  }
+
+  if (/(home|منزلي|منزل|بيت)/.test(key)) {
+    return "/home.png";
+  }
+
+  if (/(sports|رياضة|sport)/.test(key)) {
+    return "/sports.png";
+  }
+
+  if (/(accessories|اكسسوارات|إكسسوارات|مجوهرات)/.test(key)) {
+    return "/accessories.png";
+  }
+
+  return "/categories.png";
+}
+
+function getCategoryLabel(title: string) {
+  return title.trim() || title;
+}
+
+function findCategoryByValue(value: string, categories: DynamicCategory[]) {
+  const normalizedValue = normalizeCategoryKey(value);
+  return (
+    categories.find(
+      (category) =>
+        normalizeCategoryKey(category.id) === normalizedValue ||
+        normalizeCategoryKey(category.titleAr) === normalizedValue,
+    ) ?? null
+  );
+}
+
+function resolveMainCategoryIdFromProductCategory(
+  productCategory: string,
+  categories: DynamicCategory[],
+  mainCategories: DynamicCategory[],
+  mainCategoryById: Map<string, DynamicCategory>,
+) {
+  if (!productCategory.trim()) {
+    return null;
+  }
+
+  const matched = findCategoryByValue(productCategory, categories);
+  if (matched) {
+    if (matched.parentId && mainCategoryById.has(matched.parentId)) {
+      return matched.parentId;
+    }
+
+    if (mainCategoryById.has(matched.id)) {
+      return matched.id;
+    }
+  }
+
+  const directMain = mainCategories.find(
+    (category) =>
+      normalizeCategoryKey(category.titleAr) === normalizeCategoryKey(productCategory) ||
+      normalizeCategoryKey(category.id) === normalizeCategoryKey(productCategory),
+  );
+
+  return directMain?.id ?? null;
+}
+
+function getLocalizedCategoryLabel(category: Pick<DynamicCategory, "id" | "titleAr">, language: AppLanguage) {
+  const key = normalizeCategoryKey(category.id);
+  const titleKey = normalizeCategoryKey(category.titleAr);
+  const dictionary: Record<string, { en: string; he: string }> = {
+    women: { en: "Women", he: "נשים" },
+    men: { en: "Men", he: "גברים" },
+    kids: { en: "Kids", he: "ילדים" },
+    shoes: { en: "Shoes", he: "נעליים" },
+    bags: { en: "Bags", he: "תיקים" },
+    glasses: { en: "Glasses", he: "משקפיים" },
+    makeup: { en: "Makeup", he: "איפור" },
+    perfumes: { en: "Perfumes", he: "בשמים" },
+    home: { en: "Home", he: "בית" },
+    electronics: { en: "Electronics", he: "אלקטרוניקה" },
+    sports: { en: "Sports", he: "ספורט" },
+    accessories: { en: "Accessories", he: "אקססוריז" },
+    beauty: { en: "Beauty & care", he: "יופי וטיפוח" },
+  };
+
+  const titleDictionary: Record<string, { en: string; he: string }> = {
+    "بلايز": { en: "Blouses", he: "חולצות נשים" },
+    "شيالات": { en: "Shawls", he: "שאלים" },
+    "قمصان": { en: "Shirts", he: "חולצות" },
+    "بناطيل": { en: "Pants", he: "מכנסיים" },
+    "رسمي": { en: "Formal", he: "רשמי" },
+    "فساتين": { en: "Dresses", he: "שמלות" },
+    "حقائب": { en: "Bags", he: "תיקים" },
+    "أحذية": { en: "Shoes", he: "נעליים" },
+    "نظارات": { en: "Glasses", he: "משקפיים" },
+    "مكياج": { en: "Makeup", he: "איפור" },
+    "عطور": { en: "Perfumes", he: "בשמים" },
+  };
+
+  if (language === "ar") {
+    return getCategoryLabel(category.titleAr);
+  }
+
+  const mapped = dictionary[key];
+  const mappedByTitle = titleDictionary[titleKey];
+
+  if (!mapped && !mappedByTitle) {
+    return getCategoryLabel(category.titleAr);
+  }
+
+  const localized = mapped ?? mappedByTitle;
+  return language === "en" ? localized.en : localized.he;
+}
+
+function resolveAutoProductImage(text: string) {
+  const value = text.toLowerCase();
+
+  if (/(dress|فس|عباي|skirt|تنور)/.test(value)) {
+    return "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(men|رجال|بدل|بليزر|قميص|قمصان|jacket|suit)/.test(value)) {
+    return "https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(bag|حقيب|شنط|accessor|اكسسوار|إكسسوار|مجوهر|ساع|watch)/.test(value)) {
+    return "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(perfume|fragrance|عطر|عطور)/.test(value)) {
+    return "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(kids|طفل|أطفال|اطفال|baby)/.test(value)) {
+    return "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(shoe|حذا|sneaker)/.test(value)) {
+    return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  return "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=80";
+}
+
+function getProductImage(product: string | Pick<Product, "id" | "titleAr" | "detail" | "imageUrl">) {
+  if (typeof product === "string") {
+    return imageByProductId[product] ?? resolveAutoProductImage(product);
+  }
+
+  if (product.imageUrl) {
+    return product.imageUrl;
+  }
+
+  const byId = imageByProductId[product.id];
+  if (byId) {
+    return byId;
+  }
+
+  return resolveAutoProductImage(`${product.titleAr} ${product.detail}`);
+}
+
+function ProductImageWithFallback({
+  src,
+  fallbackSeed,
+  alt,
+  className,
+}: {
+  src?: string;
+  fallbackSeed: string;
+  alt: string;
+  className: string;
+}) {
+  const fallback = resolveAutoProductImage(fallbackSeed);
+  const initial = src && src.trim().length > 0 ? src : fallback;
+  const [imageSrc, setImageSrc] = useState(initial);
+
+  useEffect(() => {
+    setImageSrc(initial);
+  }, [initial]);
+
+  return (
+    <img
+      src={imageSrc}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      onError={() => {
+        if (imageSrc !== fallback) {
+          setImageSrc(fallback);
+        }
+      }}
+    />
+  );
 }
 
 function getReviewDiscount(reviewCount: number) {
@@ -90,6 +334,8 @@ function mapStorefrontProduct(product: StorefrontProduct): Product {
     detail: product.detail,
     reviewCount: product.reviewCount,
     averageRating: product.averageRating,
+    category: product.category,
+    imageUrl: product.imageUrl,
   };
 }
 
@@ -296,11 +542,15 @@ function HomeScreen({
   featured,
   onStartShopping,
   onOpenOffers,
+  onOpenCategory,
+  language,
 }: {
   categories: DynamicCategory[];
   featured: Product[];
   onStartShopping: () => void;
   onOpenOffers: () => void;
+  onOpenCategory: (category: CategorySelection) => void;
+  language: AppLanguage;
 }) {
   return (
     <div className={styles.screen}>
@@ -316,25 +566,23 @@ function HomeScreen({
         <Button variant="primary" onClick={onStartShopping}>ابدأ التسوق</Button>
       </section>
 
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className={styles.sectionLabel}>أهم الأقسام</p>
-            <h2>اختياراتنا لك</h2>
-          </div>
-          <Button variant="ghost" onClick={onStartShopping}>عرض الكل</Button>
-        </div>
-
+      <section className={`${styles.section} ${styles.minimalCategorySection}`}>
         <div className={styles.tileGrid}>
           {categories.map((tile) => (
-            <Card
+            <button
               key={tile.id}
-              title={tile.titleAr}
-              subtitle={`اكتشف أفضل القطع في قسم ${tile.titleAr}`}
+              type="button"
               className={styles.categoryTile}
+              onClick={() => onOpenCategory({ id: tile.id, titleAr: tile.titleAr })}
             >
-              <p>تصفح مجموعة مميزة من {tile.titleAr} المختارة بعناية.</p>
-            </Card>
+              <img
+                src={getCategoryImage(tile)}
+                alt={tile.titleAr}
+                className={styles.categoryImage}
+                loading="lazy"
+              />
+              <p className={styles.categoryLabel}>{getLocalizedCategoryLabel(tile, language)}</p>
+            </button>
           ))}
         </div>
       </section>
@@ -351,7 +599,12 @@ function HomeScreen({
         <div className={styles.productGrid}>
           {featured.map((product) => (
             <Card key={product.id} title={product.titleAr} subtitle={product.price} className={styles.productCard}>
-              <img src={getProductImage(product.id)} alt={product.titleAr} className={styles.productImage} loading="lazy" />
+              <ProductImageWithFallback
+                src={getProductImage(product)}
+                fallbackSeed={`${product.titleAr} ${product.detail}`}
+                alt={product.titleAr}
+                className={styles.productImage}
+              />
               <p>{product.detail}</p>
             </Card>
           ))}
@@ -366,199 +619,314 @@ function HomeScreen({
 }
 
 function ShopScreen({
-  categories,
-  featuredProducts,
+  mainCategories,
+  selectedMainCategory,
+  subCategories,
+  selectedSubCategoryId,
+  productsInCategory,
   topSellingProducts,
   onRate,
   onSelectProduct,
+  onSelectMainCategory,
+  onSelectSubCategory,
   onOpenMirror,
   onOpenOffers,
+  language,
 }: {
-  categories: DynamicCategory[];
-  featuredProducts: Product[];
+  mainCategories: DynamicCategory[];
+  selectedMainCategory: DynamicCategory | null;
+  subCategories: DynamicCategory[];
+  selectedSubCategoryId: string | null;
+  productsInCategory: Product[];
   topSellingProducts: Product[];
   onRate: (product: Product) => void;
   onSelectProduct: (product: Product) => void;
+  onSelectMainCategory: (category: CategorySelection) => void;
+  onSelectSubCategory: (subCategoryId: string | null) => void;
   onOpenMirror: () => void;
   onOpenOffers: () => void;
+  language: AppLanguage;
 }) {
   const [searchValue, setSearchValue] = useState("");
-  const [activeFilter, setActiveFilter] = useState("الكل");
   const [activeSize, setActiveSize] = useState("M");
   const [activeColor, setActiveColor] = useState("#f5c07e");
-  const [visibleFeatured, setVisibleFeatured] = useState<Product[]>(featuredProducts);
+  const [visibleProducts, setVisibleProducts] = useState<Product[]>(productsInCategory);
 
   useEffect(() => {
-    setVisibleFeatured(featuredProducts);
-  }, [featuredProducts]);
+    setVisibleProducts(productsInCategory);
+  }, [productsInCategory]);
+
+  const selectedSubCategory = selectedSubCategoryId
+    ? subCategories.find((item) => item.id === selectedSubCategoryId)
+    : null;
+
+  const inferredSubCategories = useMemo(() => {
+    if (subCategories.length > 0) {
+      return subCategories;
+    }
+
+    const seen = new Set<string>();
+    const items: DynamicCategory[] = [];
+
+    for (const product of productsInCategory) {
+      const label = (product.category ?? "").trim();
+      if (!label) {
+        continue;
+      }
+
+      const id = normalizeCategoryKey(label);
+      if (!id || seen.has(id)) {
+        continue;
+      }
+
+      seen.add(id);
+      items.push({ id, titleAr: label, icon: "🛍️", parentId: selectedMainCategory?.id ?? null });
+    }
+
+    return items;
+  }, [productsInCategory, selectedMainCategory?.id, subCategories]);
+
+  const effectiveSubCategories = inferredSubCategories;
+
+  const sidebarTitle = language === "en" ? "Categories" : language === "he" ? "קטגוריות" : "الفئات";
+  const sidebarHint = language === "en"
+    ? "Choose a section, then pick a category"
+    : language === "he"
+      ? "בחר מחלקה ואז קטגוריה"
+      : "اختر القسم ثم اختر الفئة";
+
+  const mainSectionLabel = language === "en" ? "Main sections" : language === "he" ? "מחלקות ראשיות" : "الأقسام الرئيسية";
+  const subSectionLabel = language === "en" ? "Subcategories" : language === "he" ? "תתי-קטגוריות" : "الفئات التابعة";
+
+  const allLabel = language === "en" ? "All" : language === "he" ? "הכול" : "الكل";
+  const noSubCategoriesLabel = language === "en"
+    ? "No subcategories available for this section"
+    : language === "he"
+      ? "אין תתי-קטגוריות זמינות למחלקה זו"
+      : "لا توجد فئات فرعية متاحة لهذا القسم";
+
+  const topSellingInScope = useMemo(() => {
+    const ids = new Set(productsInCategory.map((item) => item.id));
+    return topSellingProducts.filter((item) => ids.has(item.id));
+  }, [productsInCategory, topSellingProducts]);
 
   const applyFilterSelection = () => {
     const searchTerm = searchValue.trim();
-    const filtered = featuredProducts.filter((product) => {
-      const byCategory = activeFilter === "الكل" || product.titleAr.includes(activeFilter);
+    const filtered = productsInCategory.filter((product) => {
+      const bySubCategory =
+        !selectedSubCategory ||
+        normalizeCategoryKey(product.category ?? "") === normalizeCategoryKey(selectedSubCategory.titleAr) ||
+        normalizeCategoryKey(product.category ?? "") === normalizeCategoryKey(selectedSubCategory.id);
       const bySearch = !searchTerm || product.titleAr.includes(searchTerm) || product.detail.includes(searchTerm);
-      return byCategory && bySearch;
+      return bySubCategory && bySearch;
     });
 
-    setVisibleFeatured(filtered);
+    setVisibleProducts(filtered);
     if (filtered[0]) {
       onSelectProduct(filtered[0]);
     }
   };
 
+  const mainCategoryTitle = selectedMainCategory
+    ? getLocalizedCategoryLabel(selectedMainCategory, language)
+    : language === "en"
+      ? "Shop"
+      : language === "he"
+        ? "קנייה"
+        : "تسوق";
+
+  const selectedFallbackSubCategory = selectedSubCategoryId
+    ? effectiveSubCategories.find((item) => item.id === selectedSubCategoryId)
+    : null;
+
+  const activeSubCategory = selectedSubCategory ?? selectedFallbackSubCategory;
+
+  const subCategoryTitle = activeSubCategory
+    ? getLocalizedCategoryLabel(activeSubCategory, language)
+    : allLabel;
+
   return (
     <div className={styles.screen}>
-      <section className={styles.introPanel}>
-        <span className={styles.sectionTag}>تسوق</span>
-        <h2>القطع الأنيقة الجاهزة لك</h2>
-        <p>
-          صفِّح المنتجات حسب النوع والمناسبة أو اللون واحصل على أفضل الاقتراحات.
-        </p>
-        <div className={styles.actionRow}>
-          <Button variant="ghost" onClick={onOpenMirror}>ابحث عن إطلالة</Button>
-          <Button variant="ghost" onClick={onOpenOffers}>أفكار هدايا</Button>
-        </div>
-      </section>
-
-      <section className={styles.filtersPanel}>
-        <div className={styles.filterRow}>
-          <input
-            type="search"
-            placeholder="ابحث عن منتج أو لون أو مقاس"
-            className={styles.filterInput}
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-          />
-          <button type="button" className={styles.filterSubmit} onClick={applyFilterSelection}>بحث</button>
-        </div>
-
-        <div className={styles.chipRow}>
-          {['الكل', 'فساتين', 'عطور', 'حقائب', 'إكسسوارات'].map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              className={styles.filterChip}
-              onClick={() => setActiveFilter(filter)}
-              aria-pressed={activeFilter === filter}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-
-        <div className={styles.filterGrid}>
-          <div className={styles.filterBox}>
-            <p className={styles.sectionTag}>السعر</p>
-            <div className={styles.rangeRow}>
-              <span>₪2</span>
-              <span>₪2,000</span>
-            </div>
-            <input type="range" min="2" max="2000" defaultValue="550" className={styles.rangeSlider} />
+      <section className={styles.shopLayout}>
+        <aside className={styles.categorySidebar}>
+          <div className={styles.sidebarHeader}>
+            <p className={styles.sectionTag}>{sidebarTitle}</p>
+            <p className={styles.sidebarHint}>{sidebarHint}</p>
           </div>
 
-          <div className={styles.filterBox}>
-            <p className={styles.sectionTag}>المقاس</p>
-            <div className={styles.sizeRow}>
-              {['XS', 'S', 'M', 'L', 'XL'].map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  className={activeSize === size ? styles.sizeButtonActive : styles.sizeButton}
-                  onClick={() => setActiveSize(size)}
-                >
-                  {size}
-                </button>
+          <div className={styles.sidebarGroup}>
+            <p className={styles.sidebarGroupTitle}>{mainSectionLabel}</p>
+            <div className={styles.sidebarList}>
+              {mainCategories.map((category) => {
+                const active = selectedMainCategory?.id === category.id;
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    className={active ? styles.sidebarMainCardActive : styles.sidebarMainCard}
+                    onClick={() => onSelectMainCategory({ id: category.id, titleAr: category.titleAr })}
+                    aria-pressed={active}
+                  >
+                    <img
+                      src={getCategoryImage(category)}
+                      alt={category.titleAr}
+                      className={styles.sidebarMainImage}
+                      loading="lazy"
+                    />
+                    <span>{getLocalizedCategoryLabel(category, language)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={styles.sidebarGroup}>
+            <p className={styles.sidebarGroupTitle}>{subSectionLabel}</p>
+            <div className={styles.sidebarList}>
+              <button
+                type="button"
+                className={!selectedSubCategoryId ? styles.sidebarItemActive : styles.sidebarItem}
+                onClick={() => onSelectSubCategory(null)}
+                aria-pressed={!selectedSubCategoryId}
+              >
+                {allLabel}
+              </button>
+              {effectiveSubCategories.map((subCategory) => {
+                const active = selectedSubCategoryId === subCategory.id;
+                return (
+                  <button
+                    key={subCategory.id}
+                    type="button"
+                    className={active ? styles.sidebarItemActive : styles.sidebarItem}
+                    onClick={() => onSelectSubCategory(subCategory.id)}
+                    aria-pressed={active}
+                  >
+                    {getLocalizedCategoryLabel(subCategory, language)}
+                  </button>
+                );
+              })}
+              {effectiveSubCategories.length === 0 && <p className={styles.sidebarEmpty}>{noSubCategoriesLabel}</p>}
+            </div>
+          </div>
+        </aside>
+
+        <div className={styles.shopContent}>
+          <div className={styles.filtersPanel}>
+            <div className={styles.filterRow}>
+              <input
+                type="search"
+                placeholder="ابحث عن منتج أو لون أو مقاس"
+                className={styles.filterInput}
+                value={searchValue}
+                onChange={(event) => setSearchValue(event.target.value)}
+              />
+              <button type="button" className={styles.filterSubmit} onClick={applyFilterSelection}>بحث</button>
+            </div>
+
+            <div className={styles.filterGrid}>
+              <div className={styles.filterBox}>
+                <p className={styles.sectionTag}>السعر</p>
+                <div className={styles.rangeRow}><span>₪150</span><span>₪1200</span></div>
+                <input type="range" min={150} max={1200} defaultValue={620} className={styles.rangeSlider} />
+              </div>
+
+              <div className={styles.filterBox}>
+                <p className={styles.sectionTag}>اللون</p>
+                <div className={styles.colorRow}>
+                  {["#f5c07e", "#c87a4d", "#4d5fa8", "#a84d7f", "#2f3a2c"].map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={activeColor === color ? styles.colorSwatchActive : styles.colorSwatch}
+                      style={{ background: color }}
+                      onClick={() => setActiveColor(color)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.filterBox}>
+                <p className={styles.sectionTag}>المقاس</p>
+                <div className={styles.sizeRow}>
+                  {["XS", "S", "M", "L", "XL"].map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      className={activeSize === size ? styles.sizeButtonActive : styles.sizeButton}
+                      onClick={() => setActiveSize(size)}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className={styles.sectionLabel}>الأكثر مبيعًا</p>
+                <h2>{mainCategoryTitle}</h2>
+                <p className={styles.sectionHint}>{subCategoryTitle}</p>
+              </div>
+            </div>
+
+            <div className={styles.productGrid}>
+              {topSellingInScope.slice(0, 3).map((product) => (
+                <Card key={`top-${product.id}`} title={product.titleAr} subtitle={product.price} className={styles.productCard}>
+                  <ProductImageWithFallback
+                    src={getProductImage(product)}
+                    fallbackSeed={`${product.titleAr} ${product.detail}`}
+                    alt={product.titleAr}
+                    className={styles.productImage}
+                  />
+                  <p>{product.detail}</p>
+                </Card>
               ))}
             </div>
-          </div>
+          </section>
 
-          <div className={styles.filterBox}>
-            <p className={styles.sectionTag}>اللون</p>
-            <div className={styles.colorRow}>
-              {['#f5c07e', '#c87a4d', '#4d5fa8', '#a84d7f', '#2f3a2c'].map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={activeColor === color ? styles.colorSwatchActive : styles.colorSwatch}
-                  style={{ background: color }}
-                  aria-label={`Color ${color}`}
-                  onClick={() => setActiveColor(color)}
-                />
-              ))}
+          <section className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <p className={styles.sectionLabel}>اختيار مميز</p>
+                <h2>أحدث القطع المتاحة</h2>
+                <p className={styles.sectionHint}>{`عرض ${visibleProducts.length} نتيجة`}</p>
+              </div>
+              <Button variant="ghost" onClick={onOpenMirror}>اكتشف الآن</Button>
             </div>
-          </div>
-        </div>
 
-        <div className={styles.filterFooter}>
-          <span>عرض {visibleFeatured.length} نتيجة</span>
-          <button type="button" className={styles.primaryButton} onClick={applyFilterSelection}>تطبيق الفلاتر</button>
-        </div>
-      </section>
-
-      <div className={styles.shopGrid}>
-        {categories.map((category) => (
-          <button key={category.id} className={styles.shopCard} type="button" onClick={onOpenMirror}>
-            <span className={styles.shopTitle}>{category.titleAr}</span>
-            <span className={styles.shopSub}>قسم {category.titleAr}</span>
-          </button>
-        ))}
-      </div>
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className={styles.sectionLabel}>الأكثر مبيعًا</p>
-            <h2>المنتجات الأكثر طلبًا</h2>
-          </div>
-          <Button variant="ghost" onClick={onOpenOffers}>عرض الكل</Button>
-        </div>
-
-        <div className={styles.productGrid}>
-          {topSellingProducts.map((product) => (
-            <Card key={product.id} title={product.titleAr} subtitle={product.price} className={styles.productCard}>
-              <img src={getProductImage(product.id)} alt={product.titleAr} className={styles.productImage} loading="lazy" />
-              <p>{product.detail}</p>
-              <p className={styles.productAr} dir="rtl" lang="ar">
-                {product.titleAr}
-              </p>
-              <div className={styles.productMeta}>
-                <span>⭐ {product.averageRating.toFixed(1)}</span>
-                <span>{product.reviewCount} تقييم</span>
-                <span>{getReviewDiscount(product.reviewCount) > 0 ? `خصم ${getReviewDiscount(product.reviewCount)}%` : "لا يوجد خصم بعد"}</span>
+            {visibleProducts.length === 0 ? (
+              <p className={styles.sectionHint}>لا توجد منتجات في هذا التصنيف حاليًا.</p>
+            ) : (
+              <div className={styles.productGrid}>
+                {visibleProducts.map((product) => (
+                  <Card key={product.id} title={product.titleAr} subtitle={product.price} className={styles.productCard}>
+                    <ProductImageWithFallback
+                      src={getProductImage(product)}
+                      fallbackSeed={`${product.titleAr} ${product.detail}`}
+                      alt={product.titleAr}
+                      className={styles.productImage}
+                    />
+                    <p>{product.detail}</p>
+                    <div className={styles.productMeta}>
+                      <span>⭐ {product.averageRating.toFixed(1)}</span>
+                      <span>{product.reviewCount} تقييم</span>
+                    </div>
+                    <div className={styles.actionRow}>
+                      <button type="button" className={styles.primaryButton} onClick={() => onSelectProduct(product)}>
+                        اختر القطعة
+                      </button>
+                      <button type="button" className={styles.reviewButton} onClick={() => onRate(product)}>
+                        قيّم المنتج
+                      </button>
+                    </div>
+                  </Card>
+                ))}
               </div>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.section}> 
-        <div className={styles.sectionHeader}>
-          <div>
-            <p className={styles.sectionLabel}>اختيار مميز</p>
-            <h2>أحدث القطع المتاحة</h2>
-          </div>
-          <Button variant="ghost" onClick={onOpenMirror}>اكتشف الآن</Button>
-        </div>
-        <div className={styles.productGrid}>
-          {visibleFeatured.map((product) => (
-            <Card key={product.id} title={product.titleAr} subtitle={product.price} className={styles.productCard}>
-              <img src={getProductImage(product.id)} alt={product.titleAr} className={styles.productImage} loading="lazy" />
-              <p>{product.detail}</p>
-              <div className={styles.productMeta}>
-                <span>⭐ {product.averageRating.toFixed(1)}</span>
-                <span>{product.reviewCount} تقييم</span>
-                <span>{getReviewDiscount(product.reviewCount) > 0 ? `خصم ${getReviewDiscount(product.reviewCount)}%` : "لا يوجد خصم بعد"}</span>
-              </div>
-              <div className={styles.productActions}>
-                <button type="button" className={styles.primaryButton} onClick={() => onSelectProduct(product)}>
-                  اختر القطعة
-                </button>
-                <button type="button" className={styles.reviewButton} onClick={() => onRate(product)}>
-                  قيّم المنتج
-                </button>
-              </div>
-            </Card>
-          ))}
+            )}
+          </section>
         </div>
       </section>
     </div>
@@ -585,7 +953,12 @@ function FavoritesScreen({
       <div className={styles.productGrid}>
         {products.map((product) => (
           <Card key={product.id} title={product.titleAr} subtitle={product.price} className={styles.productCard}>
-            <img src={getProductImage(product.id)} alt={product.titleAr} className={styles.productImage} loading="lazy" />
+            <ProductImageWithFallback
+              src={getProductImage(product)}
+              fallbackSeed={`${product.titleAr} ${product.detail}`}
+              alt={product.titleAr}
+              className={styles.productImage}
+            />
             <p>{product.detail}</p>
             <div className={styles.productActions}>
               <button type="button" className={styles.primaryButton} onClick={() => onSelectProduct(product)}>
@@ -628,7 +1001,12 @@ function OffersScreen({ onStartShopping }: { onStartShopping: () => void }) {
         <div className={styles.offerGrid}>
           {offers.map((offer) => (
             <Card key={offer.id} title={offer.title} subtitle={offer.subtitle} className={styles.offerCard}>
-              <img src={getProductImage("hero-bag")} alt={offer.title} className={styles.productImage} loading="lazy" />
+              <ProductImageWithFallback
+                src={getProductImage("hero-bag")}
+                fallbackSeed={offer.title}
+                alt={offer.title}
+                className={styles.productImage}
+              />
               <p>{offer.subtitle}</p>
               <Button variant="ghost" onClick={onStartShopping}>عرض العرض</Button>
             </Card>
@@ -669,7 +1047,12 @@ function ProductDetailsScreen({
 
       <section className={styles.productDetailCard}>
         <div className={styles.productPreview}>
-          <img src={getProductImage(product.id)} alt={product.titleAr} className={styles.productPreviewImage} loading="lazy" />
+          <ProductImageWithFallback
+            src={getProductImage(product)}
+            fallbackSeed={`${product.titleAr} ${product.detail}`}
+            alt={product.titleAr}
+            className={styles.productPreviewImage}
+          />
         </div>
         <div className={styles.productDetailInfo}>
           <div className={styles.productMeta}>
@@ -1122,6 +1505,28 @@ function ProfileScreen({
           <img src={logisticsImages.shippingMap} alt="خريطة مسار الشحن" className={styles.mapPreviewImage} loading="lazy" />
         </div>
 
+        <div className={styles.orderItemDetailList}>
+          {(orders[0].items ?? []).map((item) => (
+            <article key={item.id} className={styles.orderItemDetailCard}>
+              {item.imageUrl ? (
+                <ProductImageWithFallback
+                  src={item.imageUrl}
+                  fallbackSeed={item.title}
+                  alt={item.title}
+                  className={styles.orderItemImage}
+                />
+              ) : null}
+              <div>
+                <strong>{item.title}</strong>
+                <p>الكمية: {item.quantity}</p>
+                <p>اللون: {item.color}</p>
+                <p>المقاس: {item.size}</p>
+                <p>السعر: {item.unitPrice}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+
         <Button variant="primary" onClick={() => setView("orderTracking")}>عرض التفاصيل</Button>
           </>
         ) : (
@@ -1162,7 +1567,7 @@ function ProfileScreen({
             label: "عنوان جديد",
             line1: "شارع جديد",
             city: "القدس",
-            isDefault: false,
+            isDefault: true,
           });
           setProfileNotice("تمت إضافة عنوان جديد");
         }}
@@ -1291,7 +1696,12 @@ function ProfileScreen({
       <div className={styles.productGrid}>
         {favoriteProducts.slice(0, 3).map((product) => (
           <Card key={`saved-${product.id}`} title={product.titleAr} subtitle={product.price} className={styles.productCard}>
-            <img src={getProductImage(product.id)} alt={product.titleAr} className={styles.productImage} loading="lazy" />
+            <ProductImageWithFallback
+              src={getProductImage(product)}
+              fallbackSeed={`${product.titleAr} ${product.detail}`}
+              alt={product.titleAr}
+              className={styles.productImage}
+            />
             <p>{product.detail}</p>
           </Card>
         ))}
@@ -1395,7 +1805,12 @@ function MirrorExperience({
         <div className={styles.mirrorProductGrid}>
           {mirrorCollections[selectedCategory].map((product) => (
             <article key={product.id} className={styles.mirrorProductCard}>
-              <img src={getProductImage(product.id)} alt={product.titleAr} className={styles.productImage} loading="lazy" />
+              <ProductImageWithFallback
+                src={getProductImage(product)}
+                fallbackSeed={`${product.titleAr} ${product.detail}`}
+                alt={product.titleAr}
+                className={styles.productImage}
+              />
               <h4>{product.titleAr}</h4>
               <p>{product.detail}</p>
               <div className={styles.mirrorProductMeta}>
@@ -1416,26 +1831,26 @@ function MirrorExperience({
 function CustomerAuthScreen({
   mode,
   fullName,
+  phone,
   email,
-  password,
   loading,
   error,
   onModeChange,
   onFullNameChange,
+  onPhoneChange,
   onEmailChange,
-  onPasswordChange,
   onSubmit,
 }: {
   mode: "login" | "signup";
   fullName: string;
+  phone: string;
   email: string;
-  password: string;
   loading: boolean;
   error: string;
   onModeChange: (mode: "login" | "signup") => void;
   onFullNameChange: (value: string) => void;
+  onPhoneChange: (value: string) => void;
   onEmailChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
   onSubmit: () => Promise<void>;
 }) {
   return (
@@ -1462,21 +1877,22 @@ function CustomerAuthScreen({
             </label>
           )}
           <label>
+  <span>رقم الهاتف</span>
+  <input
+    type="tel"
+    className={styles.contactField}
+    value={phone}
+    onChange={(event) => onPhoneChange(event.target.value)}
+    placeholder="05xxxxxxxx"
+  />
+</label>
+          <label>
             <span>البريد الإلكتروني</span>
             <input
               type="email"
               className={styles.contactField}
               value={email}
               onChange={(event) => onEmailChange(event.target.value)}
-            />
-          </label>
-          <label>
-            <span>كلمة المرور</span>
-            <input
-              type="password"
-              className={styles.contactField}
-              value={password}
-              onChange={(event) => onPasswordChange(event.target.value)}
             />
           </label>
 
@@ -1505,7 +1921,7 @@ type CustomerAppProps = {
 };
 
 export function CustomerApp({ language: languageProp, onLanguageChange }: CustomerAppProps = {}) {
-  const customerRepository = useMemo(() => createCustomerRepository(), []);
+  const customerRepository = useMemo(() => createCustomerRepository("api"), []);
   const [language, setLanguage] = useState<AppLanguage>(() => languageProp ?? getSavedLanguage());
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
 
@@ -1521,8 +1937,8 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const [authFullName, setAuthFullName] = useState("عميل BAMORA");
+  const [authPhone, setAuthPhone] = useState("");
   const [authEmail, setAuthEmail] = useState("customer@bamora.com");
-  const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -1559,13 +1975,15 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
       setCategories(resolved);
     });
 
-    hydrateCustomerData().catch((error) => {
-      if (!isMounted) {
-        return;
-      }
+    if (storedRole === "customer") {
+      hydrateCustomerData().catch((error) => {
+        if (!isMounted) {
+          return;
+        }
 
-      setDataError(error instanceof Error ? error.message : "تعذر تحميل بيانات العميل");
-    });
+        setDataError(error instanceof Error ? error.message : "تعذر تحميل بيانات العميل");
+      });
+    }
 
     return () => {
       isMounted = false;
@@ -1594,13 +2012,150 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
     }
 
     applyRuntimeTranslations(document.body, language);
-  }, [language, page, reviewProduct, selectedProduct, checkoutProduct, completedOrderProduct]);
+  });
 
+  const allProductsView = storeProducts.map(mapStorefrontProduct);
   const featuredProductsView = storeProducts.filter((product) => product.featured).map(mapStorefrontProduct);
   const topSellingProductsView = storeProducts.filter((product) => product.topSelling).map(mapStorefrontProduct);
   const favoritesProductsView = storeProducts
     .filter((product) => favoriteIds.includes(product.id))
     .map(mapStorefrontProduct);
+
+  const mainCategories = useMemo(() => {
+    const allIds = new Set(categories.map((item) => item.id));
+    const roots = categories.filter((item) => !item.parentId || !allIds.has(item.parentId));
+    return roots.length > 0 ? roots : categories;
+  }, [categories]);
+
+  const mainCategoryById = useMemo(() => {
+    const map = new Map<string, DynamicCategory>();
+    for (const category of mainCategories) {
+      map.set(category.id, category);
+    }
+    return map;
+  }, [mainCategories]);
+
+  const subCategoriesByMain = useMemo(() => {
+    const map = new Map<string, DynamicCategory[]>();
+
+    for (const main of mainCategories) {
+      map.set(main.id, []);
+    }
+
+    for (const category of categories) {
+      if (!category.parentId || !mainCategoryById.has(category.parentId)) {
+        continue;
+      }
+
+      const list = map.get(category.parentId) ?? [];
+      list.push(category);
+      map.set(category.parentId, list);
+    }
+
+    return map;
+  }, [categories, mainCategories, mainCategoryById]);
+
+  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState<string | null>(null);
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<string | null>(null);
+
+  const selectedMainCategory = useMemo(() => {
+    if (selectedMainCategoryId) {
+      const byId = mainCategoryById.get(selectedMainCategoryId);
+      if (byId) {
+        return byId;
+      }
+    }
+
+    return mainCategories[0] ?? null;
+  }, [mainCategories, mainCategoryById, selectedMainCategoryId]);
+
+  const selectedSubCategories = useMemo(() => {
+    if (!selectedMainCategory) {
+      return [] as DynamicCategory[];
+    }
+
+    return subCategoriesByMain.get(selectedMainCategory.id) ?? [];
+  }, [selectedMainCategory, subCategoriesByMain]);
+
+const productsInSelectedCategory = useMemo(() => {
+  if (!selectedMainCategory) {
+    return allProductsView;
+  }
+
+  const mainKey = normalizeCategoryKey(selectedMainCategory.titleAr);
+  const mainIdKey = normalizeCategoryKey(selectedMainCategory.id);
+
+  const productsInMainCategory = allProductsView.filter((product) => {
+    const productCategory = (product.category ?? "").trim();
+    if (!productCategory.trim()) {
+      return false;
+    }
+
+    const productKey = normalizeCategoryKey(productCategory);
+
+    const belongsToMain =
+      productKey === mainKey ||
+      productKey === mainIdKey ||
+      resolveMainCategoryIdFromProductCategory(
+        productCategory,
+        categories,
+        mainCategories,
+        mainCategoryById,
+      ) === selectedMainCategory.id;
+
+    return belongsToMain;
+  });
+
+  if (!selectedSubCategoryId) {
+    return productsInMainCategory;
+  }
+
+  const sub = selectedSubCategories.find(
+    (item) => item.id === selectedSubCategoryId,
+  );
+
+  if (!sub) {
+    const subIdKey = normalizeCategoryKey(selectedSubCategoryId);
+    return productsInMainCategory.filter((product) => {
+      const productCategory = (product.category ?? "").trim();
+      if (!productCategory) {
+        return false;
+      }
+
+      return normalizeCategoryKey(productCategory) === subIdKey;
+    });
+  }
+
+  const subKey = normalizeCategoryKey(sub.titleAr);
+  const subIdKey = normalizeCategoryKey(sub.id);
+
+  return productsInMainCategory.filter((product) => {
+    const productCategory = (product.category ?? "").trim();
+    if (!productCategory) {
+      return false;
+    }
+
+    const productKey = normalizeCategoryKey(productCategory);
+
+    return productKey === subKey || productKey === subIdKey;
+  });
+}, [
+  allProductsView,
+  categories,
+  mainCategories,
+  mainCategoryById,
+  selectedMainCategory,
+  selectedSubCategories,
+  selectedSubCategoryId,
+]);
+
+
+  useEffect(() => {
+    if (!selectedMainCategory && mainCategories[0]) {
+      setSelectedMainCategoryId(mainCategories[0].id);
+      setSelectedSubCategoryId(null);
+    }
+  }, [mainCategories, selectedMainCategory]);
   const defaultProfile: CustomerProfile =
     profile ??
     {
@@ -1619,7 +2174,29 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
     setCheckoutProduct(null);
     setCompletedOrderProduct(null);
     setIsMirrorOpen(false);
+    if (id !== "shop") {
+      setSelectedSubCategoryId(null);
+    }
+    if (id === "shop" && !selectedMainCategory && mainCategories[0]) {
+      setSelectedMainCategoryId(mainCategories[0].id);
+    }
     setPage(id as PageKey);
+  };
+
+  const handleOpenCategory = (category: CategorySelection) => {
+    setSelectedProduct(null);
+    setReviewProduct(null);
+    setCheckoutProduct(null);
+    setCompletedOrderProduct(null);
+    setIsMirrorOpen(false);
+    setSelectedMainCategoryId(category.id);
+    setSelectedSubCategoryId(null);
+    setPage("shop");
+  };
+
+  const handleSelectSubCategory = (subCategoryId: string | null) => {
+    setSelectedSubCategoryId(subCategoryId);
+    setPage("shop");
   };
 
   const handleRateProduct = (product: Product) => setReviewProduct(product);
@@ -1679,21 +2256,24 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
 
   const handleAuthSubmit = async () => {
     setAuthError("");
-    if (!authEmail || !authPassword || (authMode === "signup" && !authFullName)) {
+    if (!authEmail || !authPhone || (authMode === "signup" && !authFullName)) {
       setAuthError("يرجى تعبئة جميع الحقول المطلوبة");
       return;
     }
+
+    const generatedPassword = buildAuthSecret(authEmail, authPhone);
 
     setAuthLoading(true);
     try {
       if (authMode === "signup") {
         await customerRepository.signup({
           fullName: authFullName,
+          phone: authPhone,
           email: authEmail,
-          password: authPassword,
+          password: generatedPassword,
         });
       } else {
-        await customerRepository.login({ email: authEmail, password: authPassword });
+        await customerRepository.login({ email: authEmail, password: generatedPassword });
       }
 
       setCurrentRole("customer");
@@ -1746,7 +2326,7 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
             aria-expanded={languageMenuOpen}
             aria-haspopup="menu"
           >
-            {`اللغة: ${getLanguageLabel(language)}`}
+            {getLanguagePickerLabel(language)}
           </button>
           {languageMenuOpen && (
             <div className={styles.languageMenu} role="menu" aria-label="Language selector">
@@ -1785,13 +2365,14 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
             mode={authMode}
             fullName={authFullName}
             email={authEmail}
-            password={authPassword}
+            phone={authPhone}
             loading={authLoading}
             error={authError}
             onModeChange={setAuthMode}
             onFullNameChange={setAuthFullName}
+            onPhoneChange={setAuthPhone}
             onEmailChange={setAuthEmail}
-            onPasswordChange={setAuthPassword}
+
             onSubmit={handleAuthSubmit}
           />
         ) : completedOrderProduct ? (
@@ -1819,21 +2400,29 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
             {dataError && <p className={styles.sectionHint}>{dataError}</p>}
             {page === "home" && (
               <HomeScreen
-                categories={categories}
+                categories={mainCategories}
                 featured={featuredProductsView}
                 onStartShopping={() => setPage("shop")}
                 onOpenOffers={() => setPage("offers")}
+                onOpenCategory={handleOpenCategory}
+                language={language}
               />
             )}
             {page === "shop" && (
               <ShopScreen
-                categories={categories}
-                featuredProducts={featuredProductsView}
+                mainCategories={mainCategories}
+                selectedMainCategory={selectedMainCategory}
+                subCategories={selectedSubCategories}
+                selectedSubCategoryId={selectedSubCategoryId}
+                productsInCategory={productsInSelectedCategory}
                 topSellingProducts={topSellingProductsView}
                 onRate={handleRateProduct}
                 onSelectProduct={handleSelectProduct}
+                onSelectMainCategory={handleOpenCategory}
+                onSelectSubCategory={handleSelectSubCategory}
                 onOpenMirror={openMirror}
                 onOpenOffers={() => setPage("offers")}
+                language={language}
               />
             )}
             {page === "favorites" && (

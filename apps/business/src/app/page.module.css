@@ -1,0 +1,492 @@
+.shell {
+  min-height: 100dvh;
+  background: radial-gradient(circle at top right, rgba(201, 169, 98, 0.14), transparent 38%),
+    linear-gradient(180deg, #050505 0%, #101010 100%);
+  color: var(--bamora-white);
+}
+
+.loginShell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.loginCard,
+.hubCard,
+.workspaceCard,
+.statCard,
+.panel,
+.orderCard,
+.detailCard,
+.regionCard,
+.employeeCard {
+  border-radius: 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  box-shadow: var(--bamora-shadow-soft);
+}
+
+.loginCard {
+  width: min(34rem, 100%);
+  padding: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.brand {
+  margin: 0;
+  color: var(--bamora-gold);
+  letter-spacing: 0.32em;
+  font-size: 0.86rem;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--bamora-font-display);
+  font-size: clamp(1.65rem, 4vw, 2.45rem);
+}
+
+.subtitle,
+.muted,
+.workspaceMeta,
+.inlineNote,
+.orderMeta,
+.detailList dd,
+.detailText {
+  margin: 0;
+  color: var(--bamora-soft-white);
+  opacity: 0.92;
+  line-height: 1.5;
+}
+
+.fieldGrid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.pickerGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.pickerButton {
+  min-height: 4.25rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(201, 169, 98, 0.4);
+  background: rgba(201, 169, 98, 0.08);
+  color: var(--bamora-white);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.inputField,
+.inputSelect {
+  width: 100%;
+  min-height: 3.15rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bamora-white);
+  outline: none;
+}
+
+.inputField::placeholder {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.primaryButton,
+.secondaryButton,
+.statusButton {
+  min-height: 3rem;
+  padding: 0.45rem 1rem;
+  border-radius: 0.85rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+.primaryButton {
+  background: var(--bamora-gold);
+  color: var(--bamora-black);
+}
+
+.secondaryButton,
+.statusButton {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--bamora-white);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.hubShell {
+  min-height: 100dvh;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.hubHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.hubGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.hubCard,
+.workspaceCard {
+  padding: 1rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.workspaceLabel {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(201, 169, 98, 0.14);
+  color: var(--bamora-gold);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.workspaceTitle {
+  margin: 0;
+  font-family: var(--bamora-font-display);
+  font-size: 1.2rem;
+}
+
+.workspaceFrame {
+  min-height: 100dvh;
+}
+
+.floatingBar {
+  position: fixed;
+  top: 1rem;
+  inset-inline-end: 1rem;
+  z-index: 70;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.deliveryShell {
+  min-height: 100dvh;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+}
+
+.deliveryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.sectionTag {
+  margin: 0;
+  color: var(--bamora-gold-light);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.statCard {
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.statCard strong {
+  color: var(--bamora-gold);
+  font-size: 1.25rem;
+}
+
+.panel {
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.filtersGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.workspaceLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+
+.ordersColumn,
+.detailColumn {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.orderColumnHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.regionList,
+.ordersList,
+.employeeList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.regionCard {
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.regionHeaderButton {
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(201, 169, 98, 0.35);
+  color: var(--bamora-gold-light);
+  background: rgba(201, 169, 98, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.orderCard {
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.orderCardActive {
+  border-color: rgba(201, 169, 98, 0.48);
+}
+
+.orderHeader,
+.detailHeader,
+.detailSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.orderTitle,
+.detailTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--bamora-white);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.95rem;
+  padding: 0 0.72rem;
+  border-radius: 999px;
+  background: rgba(201, 169, 98, 0.14);
+  color: var(--bamora-gold);
+  font-size: 0.78rem;
+}
+
+.orderGrid,
+.employeeMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.miniCard {
+  padding: 0.65rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.88rem;
+}
+
+.miniCard a {
+  color: var(--bamora-gold-light);
+  text-decoration: none;
+}
+
+.itemSummaryList {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.itemSummaryCard {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.itemSummaryImage {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.45rem;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.assignRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.55rem;
+}
+
+.detailCard {
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.detailSection {
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.detailSection h3 {
+  margin: 0;
+  color: var(--bamora-gold-light);
+  letter-spacing: 0.07em;
+  font-size: 0.86rem;
+}
+
+.detailList {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.detailList div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.detailList dt {
+  color: var(--bamora-gold-light);
+  font-size: 0.79rem;
+}
+
+.detailList a {
+  color: var(--bamora-gold-light);
+  text-decoration: none;
+}
+
+.employeeFormGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.employeeCard {
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.employeeMetaGrid span {
+  color: var(--bamora-soft-white);
+  font-size: 0.85rem;
+}
+
+.emptyState {
+  padding: 0.95rem;
+  border-radius: 1rem;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  color: var(--bamora-soft-white);
+}
+
+@media (min-width: 700px) {
+  .pickerGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .filtersGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hubGrid {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 980px) {
+  .workspaceLayout {
+    grid-template-columns: minmax(0, 1.35fr) minmax(22rem, 0.95fr);
+  }
+
+  .detailCard {
+    position: sticky;
+    top: 0.75rem;
+    max-height: calc(100dvh - 1.5rem);
+    overflow: auto;
+  }
+
+  .filtersGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .employeeFormGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .orderGrid,
+  .employeeMetaGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

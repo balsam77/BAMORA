@@ -3,7 +3,13 @@
   background: radial-gradient(circle at 15% 15%, rgba(201, 169, 98, 0.12), transparent 24%),
     linear-gradient(180deg, #020202 0%, #0f0f0f 100%);
   color: var(--bamora-soft-white);
-  padding: var(--bamora-space-lg) var(--bamora-space-md) calc(9rem + env(safe-area-inset-bottom));
+  padding: var(--bamora-space-lg) var(--bamora-space-md) calc(11.5rem + env(safe-area-inset-bottom));
   display: grid;
+  justify-items: center;
   gap: var(--bamora-space-lg);
+  width: 100%;
+}
+
+.shell > * {
+  width: min(72rem, 100%);
 }

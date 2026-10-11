@@ -18,9 +18,27 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const languageBootScript = `
+    (function () {
+      try {
+        var key = "bamoraLanguage";
+        var value = localStorage.getItem(key);
+        var language = value === "en" || value === "he" || value === "ar" ? value : "ar";
+        var direction = language === "en" ? "ltr" : "rtl";
+        document.documentElement.lang = language;
+        document.documentElement.dir = direction;
+      } catch (_error) {
+        // Keep safe defaults when storage is unavailable.
+      }
+    })();
+  `;
+
   return (
-    <html lang="ar">
-      <body>{children}</body>
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: languageBootScript }} />
+        {children}
+      </body>
     </html>
   );
 }

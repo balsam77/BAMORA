@@ -9,102 +9,93 @@ export class CustomerController {
   constructor(private readonly commerceService: CommerceService) {}
 
   @Get("dashboard")
-  dashboard(@CurrentUser() user: AuthenticatedUser | null, @Query("userId") userId?: string) {
-    return this.commerceService.customerDashboard(user ?? undefined, userId);
+  dashboard(@CurrentUser() user: AuthenticatedUser | null) {
+    return this.commerceService.customerDashboard(user ?? undefined);
   }
 
   @Get("profile")
-  async profile(@CurrentUser() user: AuthenticatedUser | null, @Query("userId") userId?: string) {
-    const dashboard = await this.commerceService.customerDashboard(user ?? undefined, userId);
+  async profile(@CurrentUser() user: AuthenticatedUser | null) {
+    const dashboard = await this.commerceService.customerDashboard(user ?? undefined);
     return dashboard.profile;
   }
 
   @Get("addresses")
-  async addresses(@CurrentUser() user: AuthenticatedUser | null, @Query("userId") userId?: string) {
-    const dashboard = await this.commerceService.customerDashboard(user ?? undefined, userId);
+  async addresses(@CurrentUser() user: AuthenticatedUser | null) {
+    const dashboard = await this.commerceService.customerDashboard(user ?? undefined);
     return dashboard.addresses;
   }
 
   @Post("addresses")
   upsertAddress(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Query("userId") userId: string | undefined,
     @Body() body: { id?: string; label: string; line1: string; city: string; isDefault: boolean },
   ) {
-    return this.commerceService.upsertAddress(body, user ?? undefined, userId);
+    return this.commerceService.upsertAddress(body, user ?? undefined);
   }
 
   @Get("favorites")
-  async favorites(@CurrentUser() user: AuthenticatedUser | null, @Query("userId") userId?: string) {
-    const dashboard = await this.commerceService.customerDashboard(user ?? undefined, userId);
+  async favorites(@CurrentUser() user: AuthenticatedUser | null) {
+    const dashboard = await this.commerceService.customerDashboard(user ?? undefined);
     return dashboard.favorites;
   }
 
   @Post("favorites/:productId/toggle")
   toggleFavorite(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Query("userId") userId: string | undefined,
     @Param("productId") productId: string,
   ) {
-    return this.commerceService.toggleFavorite(productId, user ?? undefined, userId);
+    return this.commerceService.toggleFavorite(productId, user ?? undefined);
   }
 
   @Get("cart")
-  async cart(@CurrentUser() user: AuthenticatedUser | null, @Query("userId") userId?: string) {
-    const dashboard = await this.commerceService.customerDashboard(user ?? undefined, userId);
+  async cart(@CurrentUser() user: AuthenticatedUser | null) {
+    const dashboard = await this.commerceService.customerDashboard(user ?? undefined);
     return dashboard.cart;
   }
 
   @Post("cart")
   addToCart(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Query("userId") userId: string | undefined,
     @Body() body: { productId: string; quantity: number; size: string; color: string },
   ) {
-    return this.commerceService.addToCart(body, user ?? undefined, userId);
+    return this.commerceService.addToCart(body, user ?? undefined);
   }
 
   @Delete("cart/:itemId")
-  async removeCartItem(
-    @CurrentUser() user: AuthenticatedUser | null,
-    @Query("userId") userId: string | undefined,
-    @Param("itemId") itemId: string,
-  ) {
-    return { deleted: await this.commerceService.removeCartItem(itemId, user ?? undefined, userId) };
+  async removeCartItem(@CurrentUser() user: AuthenticatedUser | null, @Param("itemId") itemId: string) {
+    return { deleted: await this.commerceService.removeCartItem(itemId, user ?? undefined) };
   }
 
   @Post("checkout")
-  checkout(@CurrentUser() user: AuthenticatedUser | null, @Query("userId") userId?: string) {
-    return this.commerceService.checkout(user ?? undefined, userId);
+  checkout(@CurrentUser() user: AuthenticatedUser | null) {
+    return this.commerceService.checkout(user ?? undefined);
   }
 
   @Get("orders")
-  orders(@CurrentUser() user: AuthenticatedUser | null, @Query("userId") userId?: string) {
-    return this.commerceService.listCustomerOrders(user ?? undefined, userId);
+  orders(@CurrentUser() user: AuthenticatedUser | null) {
+    return this.commerceService.listCustomerOrders(user ?? undefined);
   }
 
   @Patch("orders/:id/cancel")
   cancelOrder(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Query("userId") userId: string | undefined,
     @Param("id") id: string,
   ) {
-    return this.commerceService.cancelOrder(id, user ?? undefined, userId);
+    return this.commerceService.cancelOrder(id, user ?? undefined);
   }
 
   @Patch("orders/:id/return")
   returnOrder(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Query("userId") userId: string | undefined,
     @Param("id") id: string,
     @Body() body: { reason?: string },
   ) {
-    return this.commerceService.requestReturn(id, body.reason, user ?? undefined, userId);
+    return this.commerceService.requestReturn(id, body.reason, user ?? undefined);
   }
 
   @Get("notifications")
-  notifications(@CurrentUser() user: AuthenticatedUser | null, @Query("userId") userId?: string) {
-    return this.commerceService.listCustomerNotifications(user ?? undefined, userId);
+  notifications(@CurrentUser() user: AuthenticatedUser | null) {
+    return this.commerceService.listCustomerNotifications(user ?? undefined);
   }
 
   @Patch("notifications/:id/read")
@@ -115,10 +106,9 @@ export class CustomerController {
   @Post("reviews")
   submitReview(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Query("userId") userId: string | undefined,
     @Body() body: { productId: string; rating: number; comment?: string },
   ) {
-    return this.commerceService.submitReview(body, user ?? undefined, userId);
+    return this.commerceService.submitReview(body, user ?? undefined);
   }
 
   @Get("search")

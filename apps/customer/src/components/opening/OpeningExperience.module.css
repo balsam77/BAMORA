@@ -919,6 +919,161 @@
   color: var(--bamora-soft-white);
 }
 
+/* Responsive and typography safety overrides */
+.shell,
+.splash,
+.daily,
+.questions,
+.advice,
+.account,
+.selection,
+.department,
+.mirror,
+.checkout,
+.success,
+.questionCard,
+.dailyCard,
+.accountCard,
+.selectionCard,
+.departmentCard,
+.mirrorCard,
+.checkoutCard,
+.successCard,
+.searchRow,
+.checkoutItem,
+.checkoutTotalRow,
+.mirrorHeader,
+.successSummary div,
+.successDetails li,
+.paymentMethodCard,
+.departmentNavItem,
+.productCard,
+.mirrorItem {
+  min-width: 0;
+}
+
+.advice,
+.questions,
+.account,
+.selection,
+.department,
+.mirror,
+.checkout,
+.success {
+  margin-inline: auto;
+}
+
+.letterB {
+  font-size: clamp(3.2rem, 10vw, 6.8rem);
+  line-height: 1;
+}
+
+.brandTitle {
+  font-size: clamp(1.35rem, 3.3vw, 2.4rem);
+  line-height: 1.2;
+  letter-spacing: 0.2em;
+}
+
+.languageBar,
+.primaryButton,
+.secondaryButton,
+.ghostButton,
+.paymentButton,
+.cartButton,
+.fixedCart,
+.persistentMirrorButton,
+.tryOnButton,
+.skipButton {
+  max-width: 100%;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.languageBar {
+  letter-spacing: 0.1em;
+}
+
+.accountTopRow,
+.mirrorHeader,
+.checkoutTotalRow,
+.checkoutPaymentBar,
+.successSummary div,
+.successDetails li {
+  flex-wrap: wrap;
+}
+
+.languageMenu {
+  inset-inline-start: 0;
+  left: auto;
+  max-width: min(14rem, calc(100vw - 2rem));
+}
+
+.fieldSelect {
+  flex-wrap: wrap;
+  row-gap: 0.35rem;
+}
+
+.fieldSelect span,
+.fieldSelect strong,
+.departmentTitle,
+.checkoutSubtitle,
+.successDescription,
+.successSummary p,
+.successDetails li span,
+.successDetails li strong,
+.accountHeader span,
+.profileSection p,
+.paymentMethodCard span,
+.paymentMethodCard strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 760px) {
+  .questionCard,
+  .dailyCard,
+  .accountCard,
+  .selectionCard,
+  .departmentCard,
+  .mirrorCard,
+  .checkoutCard,
+  .successCard {
+    width: min(36rem, calc(100vw - 1rem));
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border-radius: 1.5rem;
+  }
+
+  .paymentMethodGrid,
+  .mirrorGrid,
+  .photoPreviewRow {
+    grid-template-columns: 1fr;
+  }
+
+  .checkoutItem {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+}
+
+@media (max-width: 480px) {
+  .advice,
+  .questions,
+  .account,
+  .selection,
+  .department,
+  .mirror,
+  .checkout,
+  .success {
+    width: calc(100vw - 0.75rem);
+  }
+
+  .fixedCart,
+  .persistentMirrorButton {
+    max-width: calc(100vw - 1.5rem);
+  }
+}
+
 .successDetails li strong {
   color: var(--bamora-gold);
 }
@@ -953,7 +1108,7 @@
 
 .categoryGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
   gap: 0.9rem;
   width: 100%;
 }
@@ -962,8 +1117,11 @@
   display: grid;
   justify-items: center;
   gap: 0.65rem;
-  padding: 0.75rem 0.5rem;
-  min-height: 6.2rem;
+  grid-template-rows: minmax(0, 1fr) auto;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  min-height: 0;
+  padding: 0.6rem;
   border-radius: 1.5rem;
   border: 1px solid rgba(201, 169, 98, 0.28);
   background: rgba(255, 255, 255, 0.04);
@@ -972,25 +1130,44 @@
 }
 
 .itemIcon {
-  display: inline-flex;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 0.7rem;
   align-items: center;
   justify-content: center;
   background: rgba(201, 169, 98, 0.12);
   color: var(--bamora-gold);
-  font-size: 1.15rem;
+  font-size: 1rem;
+  overflow: hidden;
+}
+
+.itemIcon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .categoryItem span:last-child {
-  font-size: 0.8rem;
+  width: 100%;
+  max-width: 100%;
+  font-size: clamp(0.82rem, 0.2vw + 0.78rem, 0.92rem);
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   color: var(--bamora-soft-white);
 }
 
 @media (max-width: 420px) {
   .categoryGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(7.4rem, 1fr));
+  }
+
+  .categoryItem {
+    padding: 0.5rem;
   }
 }
 

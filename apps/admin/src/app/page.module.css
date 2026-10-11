@@ -251,6 +251,26 @@
   font-size: 0.85rem;
 }
 
+.orderItemList {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.orderItemCard {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.orderItemImage {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.45rem;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
 .actionsCell {
   display: flex;
   flex-wrap: wrap;

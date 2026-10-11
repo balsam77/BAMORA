@@ -11,6 +11,9 @@ export class SignupDto {
   email!: string;
 
   @IsString()
+  @Length(7, 32)
+  phone!: string;
+  @IsString()
   @Length(6, 128)
   password!: string;
 
@@ -21,6 +24,45 @@ export class SignupDto {
 
 export class LoginDto {
   @IsEmail()
+  email!: string;
+
+  @IsString()
+  @Length(6, 128)
+  password!: string;
+}
+
+export class MerchantRegistrationDto {
+  @IsString()
+  @Length(2, 120)
+  businessName!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @Length(7, 32)
+  phone!: string;
+
+  @IsString()
+  @Matches(/^\d{6,20}$/)
+  nationalId!: string;
+}
+
+export class MerchantLoginDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @Matches(/^\d{4}$/)
+  password!: string;
+
+  @IsString()
+  @Length(7, 32)
+  loginCode!: string;
+}
+
+export class AdminLoginDto {
+  @IsString()
   email!: string;
 
   @IsString()

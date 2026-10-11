@@ -1,11 +1,13 @@
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--bamora-space-md);
 }
 
 .card {
   position: relative;
+  width: 100%;
+  min-width: 0;
   min-height: 14rem;
   padding: var(--bamora-space-lg);
   border: 1px solid var(--bamora-gold-light);
@@ -53,13 +55,19 @@
 
 .titleEn {
   font-family: var(--bamora-font-display);
-  font-size: 1.35rem;
+  font-size: clamp(1.05rem, 1.2vw, 1.22rem);
+  line-height: 1.3;
   letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .titleAr {
-  font-size: 0.95rem;
+  font-size: clamp(0.9rem, 0.3vw + 0.84rem, 0.98rem);
+  line-height: 1.45;
   color: var(--bamora-gold-light);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .card::before {
@@ -70,4 +78,14 @@
   width: 2rem;
   height: 1px;
   background: var(--bamora-gold);
+}
+
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    min-height: 12rem;
+  }
 }

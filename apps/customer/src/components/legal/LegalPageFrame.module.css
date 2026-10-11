@@ -1,0 +1,104 @@
+.page {
+  min-height: 100dvh;
+  background: radial-gradient(circle at 15% 12%, rgba(201, 169, 98, 0.12), transparent 24%),
+    linear-gradient(180deg, #020202 0%, #0f0f0f 100%);
+  color: var(--bamora-soft-white);
+  padding: var(--bamora-space-lg) var(--bamora-space-md) calc(4rem + env(safe-area-inset-bottom));
+  display: grid;
+  gap: var(--bamora-space-lg);
+}
+
+.header,
+.content,
+.footer {
+  width: min(72rem, 100%);
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brandGroup {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.brandHint {
+  margin: 0;
+  color: var(--bamora-gold-light);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+}
+
+.backLink {
+  text-decoration: none;
+  color: var(--bamora-gold);
+  border: 1px solid rgba(201, 169, 98, 0.55);
+  border-radius: 999px;
+  padding: 0.58rem 1rem;
+  background: rgba(201, 169, 98, 0.08);
+}
+
+.card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border-radius: var(--bamora-radius-xl);
+  padding: clamp(1.15rem, 2vw, 2rem);
+  box-shadow: var(--bamora-shadow-soft);
+}
+
+.title {
+  margin: 0;
+  color: var(--bamora-white);
+  font-family: var(--bamora-font-display);
+  font-size: clamp(1.6rem, 3vw, 2.3rem);
+}
+
+.intro {
+  margin-top: 0.85rem;
+  margin-bottom: 0;
+  line-height: 1.75;
+}
+
+.section {
+  margin-top: 1.35rem;
+}
+
+.section h2 {
+  margin: 0;
+  color: var(--bamora-gold);
+  font-size: 1.05rem;
+}
+
+.section p {
+  margin: 0.6rem 0 0;
+  line-height: 1.8;
+}
+
+.disclaimer {
+  margin-top: 1.2rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(201, 169, 98, 0.35);
+  background: rgba(201, 169, 98, 0.08);
+  color: var(--bamora-gold-light);
+}
+
+.footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1rem;
+}
+
+@media (max-width: 720px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -4,6 +4,8 @@ export type AuthenticatedUser = {
   sub: string;
   email: string;
   role: "customer" | "merchant" | "super-admin";
+  merchantId?: string;
+  merchantStatus?: "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED";
 };
 
 export const CurrentUser = createParamDecorator(

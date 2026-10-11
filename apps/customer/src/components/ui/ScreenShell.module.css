@@ -2,20 +2,24 @@
   min-height: 100dvh;
   display: grid;
   grid-template-rows: 1fr auto;
+  justify-items: center;
   background: radial-gradient(circle at 20% 20%, rgba(201, 169, 98, 0.12), transparent 22%),
     radial-gradient(circle at 80% 18%, rgba(255, 255, 255, 0.06), transparent 20%),
     linear-gradient(180deg, #040404 0%, #0f0f0f 100%);
   color: var(--bamora-soft-white);
   padding: var(--bamora-space-lg) var(--bamora-space-md) var(--bamora-space-lg);
+  width: 100%;
 }
 
 .content {
   display: grid;
   gap: var(--bamora-space-lg);
+  width: min(72rem, 100%);
 }
 
 .footer {
   display: grid;
   gap: var(--bamora-space-md);
   margin-top: var(--bamora-space-lg);
+  width: min(72rem, 100%);
 }

@@ -3,8 +3,11 @@ import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { createHash, randomBytes } from "crypto";
 import {
+  AdminLoginDto,
   LoginDto,
   LogoutDto,
+  MerchantLoginDto,
+  MerchantRegistrationDto,
   RefreshTokenDto,
   RequestPasswordResetDto,
   ResetPasswordDto,
@@ -25,6 +28,18 @@ export class AuthService {
 
   private hashValue(value: string) {
     return createHash("sha256").update(value).digest("hex");
+  }
+
+  private lastThreeDigits(value: string) {
+    return value.slice(-3);
+  }
+
+  private lastFourDigits(value: string) {
+    return value.slice(-4);
+  }
+
+  private normalizePhone(value: string) {
+    return value.replace(/[^\d]/g, "");
   }
 
   private roleToDb(role: "customer" | "merchant" | "super-admin") {
@@ -49,6 +64,45 @@ export class AuthService {
     }
 
     return "customer" as const;
+  }
+
+  private assertRole(userRole: "CUSTOMER" | "MERCHANT" | "ADMIN", expected: "CUSTOMER" | "MERCHANT" | "ADMIN") {
+    if (userRole !== expected) {
+      throw new UnauthorizedException("Invalid credentials.");
+    }
+  }
+
+  private assertLoginAllowed(user: {
+    status: "ACTIVE" | "SUSPENDED";
+    role: "CUSTOMER" | "MERCHANT" | "ADMIN";
+    merchant?: { status: "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED" } | null;
+    adminUser?: { id: string } | null;
+  }) {
+    if (user.status !== "ACTIVE") {
+      throw new UnauthorizedException("Account is suspended.");
+    }
+
+    if (user.role === "MERCHANT") {
+      if (!user.merchant) {
+        throw new UnauthorizedException("Merchant account is not configured.");
+      }
+
+      if (user.merchant.status === "PENDING") {
+        throw new UnauthorizedException("Merchant application is pending admin approval.");
+      }
+
+      if (user.merchant.status === "REJECTED") {
+        throw new UnauthorizedException("Merchant application was rejected.");
+      }
+
+      if (user.merchant.status !== "ACTIVE") {
+        throw new UnauthorizedException("Merchant account is not active.");
+      }
+    }
+
+    if (user.role === "ADMIN" && !user.adminUser) {
+      throw new UnauthorizedException("Admin account is not authorized.");
+    }
   }
 
   private async createSessionTokens(user: { id: string; email: string; role: "CUSTOMER" | "MERCHANT" | "ADMIN" }, userAgent?: string, ipAddress?: string) {
@@ -85,6 +139,10 @@ export class AuthService {
   }
 
   async signup(dto: SignupDto, userAgent?: string, ipAddress?: string) {
+    if (dto.role && dto.role !== "customer") {
+      throw new BadRequestException("Use the dedicated merchant or admin workflow for this account type.");
+    }
+
     const existing = await this.authRepository.findUserByEmail(dto.email.toLowerCase());
     if (existing) {
       throw new BadRequestException("Email is already registered.");
@@ -94,17 +152,48 @@ export class AuthService {
     const firstName = nameParts[0] ?? "";
     const lastName = nameParts.slice(1).join(" ") || undefined;
 
-    const passwordHash = await bcrypt.hash(dto.password, 12);
     const created = await this.authRepository.createUser({
-      email: dto.email.toLowerCase(),
-      passwordHash,
-      role: this.roleToDb(dto.role ?? "customer"),
-      firstName,
-      lastName,
-      businessName: dto.name,
-    });
+  email: dto.email.toLowerCase(),
+  phone: dto.phone,
+  passwordHash: this.hashValue(dto.password),
+  role: this.roleToDb(dto.role ?? "customer"),
+  firstName,
+  lastName,
+  businessName: dto.name,
+});
 
     return this.createSessionTokens(created, userAgent, ipAddress);
+  }
+
+  async registerMerchantApplication(dto: MerchantRegistrationDto) {
+    const email = dto.email.toLowerCase();
+    const nationalIdHash = this.hashValue(dto.nationalId);
+
+    const [existingByEmail, existingByNationalId] = await Promise.all([
+      this.authRepository.findUserByEmail(email),
+      this.authRepository.findUserByNationalIdHash(nationalIdHash),
+    ]);
+
+    if (existingByEmail || existingByNationalId) {
+      throw new BadRequestException("A merchant account with these credentials already exists.");
+    }
+
+    const passwordHash = await bcrypt.hash(this.lastThreeDigits(dto.nationalId), 12);
+   const created = await this.authRepository.createUser({
+  email,
+  phone: dto.phone,
+  passwordHash,
+  role: "MERCHANT",
+  businessName: dto.businessName,
+  nationalIdHash,
+  nationalIdLast3: this.lastThreeDigits(dto.nationalId),
+});
+
+    return {
+      merchantId: created.merchant?.id,
+      status: created.merchant?.status ?? "PENDING",
+      message: "Merchant application submitted and awaiting admin approval.",
+    };
   }
 
   async login(dto: LoginDto, userAgent?: string, ipAddress?: string) {
@@ -113,10 +202,108 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials.");
     }
 
+    this.assertRole(user.role, "CUSTOMER");
+    this.assertLoginAllowed(user);
+
+    if (!user.passwordHash) {
+      throw new UnauthorizedException("Invalid credentials.");
+    }
+
     const matched = await bcrypt.compare(dto.password, user.passwordHash);
     if (!matched) {
       throw new UnauthorizedException("Invalid credentials.");
     }
+
+    await this.authRepository.revokeAllRefreshTokensForUser(user.id);
+    return this.createSessionTokens(user, userAgent, ipAddress);
+  }
+
+  async merchantLogin(dto: MerchantLoginDto, userAgent?: string, ipAddress?: string) {
+    const email = dto.email.toLowerCase().trim();
+    const providedPhone = this.normalizePhone(dto.loginCode);
+    const providedCode = dto.password.trim();
+
+    if (!providedPhone || providedCode !== this.lastFourDigits(providedPhone)) {
+      throw new UnauthorizedException("Invalid credentials.");
+    }
+
+    let user = await this.authRepository.findUserByEmail(email);
+
+    if (!user) {
+      const created = await this.authRepository.createUser({
+        email,
+        phone: providedPhone,
+        passwordHash: await bcrypt.hash(providedCode, 12),
+        role: "MERCHANT",
+        businessName: email.split("@")[0] || "BAMORA Merchant",
+      });
+
+      await this.authRepository.activateMerchantByUserId(created.id);
+      user = await this.authRepository.findUserById(created.id);
+    }
+
+    if (!user) {
+      throw new UnauthorizedException("Invalid credentials.");
+    }
+
+    this.assertRole(user.role, "MERCHANT");
+
+    const storedPhone = this.normalizePhone(user.phone ?? "");
+    if (!storedPhone || storedPhone !== providedPhone || providedCode !== this.lastFourDigits(storedPhone)) {
+      throw new UnauthorizedException("Invalid credentials.");
+    }
+
+    if (user.merchant?.status === "PENDING") {
+      await this.authRepository.activateMerchantByUserId(user.id);
+      user = await this.authRepository.findUserById(user.id);
+      if (!user) {
+        throw new UnauthorizedException("Invalid credentials.");
+      }
+    }
+
+    this.assertLoginAllowed(user);
+
+    await this.authRepository.revokeAllRefreshTokensForUser(user.id);
+    return this.createSessionTokens(user, userAgent, ipAddress);
+  }
+
+  async adminLogin(dto: AdminLoginDto, userAgent?: string, ipAddress?: string) {
+    const email = dto.email.toLowerCase().trim();
+    const password = dto.password.trim();
+
+    if (email === "bamora" && password === "balsam99") {
+      let user = await this.authRepository.findUserByEmail(email);
+      if (!user) {
+        user = await this.authRepository.createUser({
+          email,
+          passwordHash: this.hashValue(password),
+          role: "ADMIN",
+          businessName: "BAMORA Super Admin",
+        });
+      }
+
+      this.assertRole(user.role, "ADMIN");
+      this.assertLoginAllowed(user);
+      await this.authRepository.revokeAllRefreshTokensForUser(user.id);
+      return this.createSessionTokens(user, userAgent, ipAddress);
+    }
+
+    const user = await this.authRepository.findUserByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException("Invalid credentials.");
+    }
+
+    this.assertRole(user.role, "ADMIN");
+    if (!user.passwordHash) {
+      throw new UnauthorizedException("Invalid credentials.");
+    }
+
+    const matched = await bcrypt.compare(password, user.passwordHash);
+    if (!matched) {
+      throw new UnauthorizedException("Invalid credentials.");
+    }
+
+    this.assertLoginAllowed(user);
 
     await this.authRepository.revokeAllRefreshTokensForUser(user.id);
     return this.createSessionTokens(user, userAgent, ipAddress);
@@ -133,6 +320,8 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException("User not found.");
     }
+
+    this.assertLoginAllowed(user);
 
     await this.authRepository.revokeRefreshToken(tokenRecord.id);
     return this.createSessionTokens(user, userAgent, ipAddress);

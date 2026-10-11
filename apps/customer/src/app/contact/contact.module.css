@@ -1,0 +1,96 @@
+.stack {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.infoCard {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1rem;
+}
+
+.infoTitle {
+  margin: 0;
+  color: var(--bamora-gold);
+  font-size: 0.95rem;
+}
+
+.infoList {
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.infoList li {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.infoLabel {
+  color: var(--bamora-gold-light);
+  font-size: 0.8rem;
+}
+
+.infoValue,
+.infoValue a {
+  color: var(--bamora-soft-white);
+  text-decoration: none;
+}
+
+.form {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1rem;
+}
+
+.form h3 {
+  margin: 0;
+  color: var(--bamora-white);
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field label {
+  color: var(--bamora-gold-light);
+  font-size: 0.86rem;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--bamora-white);
+  padding: 0.7rem 0.85rem;
+  font: inherit;
+}
+
+.field textarea {
+  min-height: 6.5rem;
+  resize: vertical;
+}
+
+.submit {
+  border: 1px solid rgba(201, 169, 98, 0.75);
+  background: rgba(201, 169, 98, 0.16);
+  color: var(--bamora-gold);
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  justify-self: start;
+}
+
+.notice {
+  margin: 0;
+  color: var(--bamora-gold-light);
+}

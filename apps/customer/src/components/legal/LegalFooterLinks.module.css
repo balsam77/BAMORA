@@ -1,0 +1,33 @@
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.link {
+  color: var(--bamora-gold-light);
+  text-decoration: none;
+  font-size: 0.9rem;
+  border: 1px solid rgba(201, 169, 98, 0.25);
+  border-radius: 999px;
+  padding: 0.48rem 0.82rem;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color var(--bamora-duration-fast) var(--bamora-ease),
+    color var(--bamora-duration-fast) var(--bamora-ease),
+    transform var(--bamora-duration-fast) var(--bamora-ease);
+}
+
+.link:hover,
+.link:focus-visible {
+  color: var(--bamora-gold);
+  border-color: rgba(201, 169, 98, 0.65);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.linkActive {
+  color: var(--bamora-gold);
+  border-color: rgba(201, 169, 98, 0.85);
+  background: rgba(201, 169, 98, 0.12);
+}

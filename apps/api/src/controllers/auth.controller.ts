@@ -1,7 +1,10 @@
 import { Body, Controller, Headers, Ip, Post } from "@nestjs/common";
 import {
+  AdminLoginDto,
   LoginDto,
   LogoutDto,
+  MerchantLoginDto,
+  MerchantRegistrationDto,
   RefreshTokenDto,
   RequestPasswordResetDto,
   ResetPasswordDto,
@@ -23,6 +26,11 @@ export class AuthController {
     return this.authService.signup(payload, userAgent, ipAddress);
   }
 
+  @Post("merchant/register")
+  registerMerchant(@Body() payload: MerchantRegistrationDto) {
+    return this.authService.registerMerchantApplication(payload);
+  }
+
   @Post("login")
   login(
     @Body() payload: LoginDto,
@@ -30,6 +38,24 @@ export class AuthController {
     @Ip() ipAddress?: string,
   ) {
     return this.authService.login(payload, userAgent, ipAddress);
+  }
+
+  @Post("merchant/login")
+  merchantLogin(
+    @Body() payload: MerchantLoginDto,
+    @Headers("user-agent") userAgent?: string,
+    @Ip() ipAddress?: string,
+  ) {
+    return this.authService.merchantLogin(payload, userAgent, ipAddress);
+  }
+
+  @Post("admin/login")
+  adminLogin(
+    @Body() payload: AdminLoginDto,
+    @Headers("user-agent") userAgent?: string,
+    @Ip() ipAddress?: string,
+  ) {
+    return this.authService.adminLogin(payload, userAgent, ipAddress);
   }
 
   @Post("refresh")

@@ -13,7 +13,7 @@ export function HomepageCards() {
         >
           <span className={styles.overlay} aria-hidden="true" />
           <span className={styles.content}>
-            <span className={styles.titleAr} dir="rtl" lang="ar">
+            <span className={styles.titleAr}>
               {card.titleAr}
             </span>
           </span>

@@ -1,0 +1,25 @@
+{
+  "name": "@bamora/business",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "node ../merchant/node_modules/next/dist/bin/next dev --port 3003",
+    "build": "node ../merchant/node_modules/next/dist/bin/next build",
+    "start": "node ../merchant/node_modules/next/dist/bin/next start --port 3003",
+    "lint": "node ../merchant/node_modules/next/dist/bin/next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bamora/platform": "workspace:*",
+    "@bamora/ui": "workspace:*",
+    "next": "^15.3.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.1.6",
+    "typescript": "^5.8.3"
+  }
+}

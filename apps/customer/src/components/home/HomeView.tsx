@@ -49,7 +49,7 @@ export function HomeView() {
         <div className={styles.quickPickGrid}>
           {homepageCards.map((card) => (
             <button key={card.id} type="button" className={styles.quickCard}>
-              <span className={styles.quickTitleAr} dir="rtl" lang="ar">
+              <span className={styles.quickTitleAr}>
                 {card.titleAr}
               </span>
             </button>

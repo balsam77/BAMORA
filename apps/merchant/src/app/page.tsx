@@ -19,6 +19,8 @@ import {
 } from "@bamora/platform";
 import styles from "./page.module.css";
 
+const ENABLE_DEMO_MODE = process.env.NEXT_PUBLIC_ENABLE_DEMO_MODE === "1";
+
 type MerchantTab = "overview" | "catalog" | "orders" | "promotions" | "notifications" | "analytics";
 
 type ProductFormState = {
@@ -68,7 +70,7 @@ const emptyForm: ProductFormState = {
   images: "",
 };
 
-const merchantRepository = createMerchantRepository();
+const merchantRepository = createMerchantRepository("api");
 
 function toProductInput(form: ProductFormState): MerchantProductInput {
   return {
@@ -100,8 +102,11 @@ function MerchantPageContent() {
   const searchParams = useSearchParams();
   const [ready, setReady] = useState(false);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [merchantCode, setMerchantCode] = useState("");
+  const [merchantEmail, setMerchantEmail] = useState("");
+  const [merchantPhone, setMerchantPhone] = useState("");
+  const [merchantPassword, setMerchantPassword] = useState("");
   const [merchantName, setMerchantName] = useState("");
+  const [loginNotice, setLoginNotice] = useState("");
   const [activeTab, setActiveTab] = useState<MerchantTab>("overview");
   const [orderFilter, setOrderFilter] = useState<MerchantOrderStatus | "all">("all");
   const [products, setProducts] = useState<MerchantProduct[]>([]);
@@ -111,6 +116,7 @@ function MerchantPageContent() {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [catalogForm, setCatalogForm] = useState<ProductFormState>(emptyForm);
   const [productNotice, setProductNotice] = useState("يمكنك إضافة صور متعددة للمنتج الواحد قبل الحفظ.");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const loadDashboard = async () => {
     const data = await merchantRepository.getDashboard();
@@ -121,7 +127,7 @@ function MerchantPageContent() {
   };
 
   useEffect(() => {
-    const demoMode = searchParams.get("demo") === "1";
+    const demoMode = ENABLE_DEMO_MODE && searchParams.get("demo") === "1";
     if (demoMode) {
       const demoName = "BAMORA Demo Merchant";
       window.localStorage.setItem(ROLE_KEY, "merchant");
@@ -155,25 +161,43 @@ function MerchantPageContent() {
   }, [orders, orderFilter]);
 
   const loginAsMerchant = async () => {
-    const normalizedName = merchantName.trim() || merchantCode.trim();
-    if (!normalizedName) {
+    const email = merchantEmail.trim().toLowerCase();
+    const phone = merchantPhone.replace(/[^\d]/g, "");
+    const password = merchantPassword.trim();
+
+    if (!email || !phone || !password) {
+      setLoginNotice("أكمل البريد الإلكتروني، رقم الهاتف، وكلمة المرور.");
       return;
     }
 
-    setCurrentRole("merchant");
-    window.localStorage.setItem(MERCHANT_NAME_KEY, normalizedName);
-    setMerchantName(normalizedName);
-    setRole("merchant");
-    setActiveTab("overview");
-    await loadDashboard();
+    try {
+      const session = await merchantRepository.login({
+        email,
+        password,
+        loginCode: phone,
+      });
+
+      setCurrentRole("merchant");
+      window.localStorage.setItem(MERCHANT_NAME_KEY, session.email);
+      setMerchantName(session.email);
+      setRole("merchant");
+      setActiveTab("overview");
+      setLoginNotice("");
+      await loadDashboard();
+    } catch (error) {
+      setLoginNotice(error instanceof Error ? error.message : "تعذر تسجيل دخول التاجر.");
+    }
   };
 
   const logout = () => {
     window.localStorage.removeItem(MERCHANT_NAME_KEY);
     clearRoleSession();
     setRole(null);
-    setMerchantCode("");
+    setMerchantEmail("");
+    setMerchantPhone("");
+    setMerchantPassword("");
     setMerchantName("");
+    setLoginNotice("");
     setProducts([]);
     setOrders([]);
     setEditingProductId(null);
@@ -188,6 +212,10 @@ function MerchantPageContent() {
     const payload = toProductInput(catalogForm);
     if (!payload.name || !payload.category || !payload.price) {
       setProductNotice("الرجاء تعبئة اسم المنتج والقسم والسعر قبل الحفظ.");
+      return;
+    }
+    if (payload.images.length === 0) {
+      setProductNotice("صورة المنتج مطلوبة. ارفع صورة واحدة على الأقل قبل الحفظ.");
       return;
     }
 
@@ -205,6 +233,10 @@ function MerchantPageContent() {
     }
 
     const payload = toProductInput(catalogForm);
+    if (payload.images.length === 0) {
+      setProductNotice("صورة المنتج مطلوبة. لا يمكن حفظ التعديل بدون صورة.");
+      return;
+    }
     const updated = await merchantRepository.updateProduct(editingProductId, payload);
     if (!updated) {
       setProductNotice("تعذر العثور على المنتج المطلوب تحديثه.");
@@ -243,6 +275,29 @@ function MerchantPageContent() {
     await loadDashboard();
   };
 
+  const handleUploadProductImage = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const uploaded = await merchantRepository.uploadProductImage(file);
+      setCatalogForm((current) => {
+        const currentImages = parseCsvField(current.images);
+        return {
+          ...current,
+          images: [...currentImages, uploaded.url].join(", "),
+        };
+      });
+      setProductNotice("تم رفع الصورة بنجاح.");
+    } catch (error) {
+      setProductNotice(error instanceof Error ? error.message : "تعذر رفع الصورة.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   if (!ready) {
     return <div className={styles.shell} />;
   }
@@ -268,24 +323,32 @@ function MerchantPageContent() {
         <section className={styles.loginCard}>
           <p className={styles.brand}>BAMORA</p>
           <h1>بوابة التاجر</h1>
-          <p>أدخل رمز التاجر واسم المتجر للدخول إلى لوحة التحكم.</p>
+          <p>أدخل بيانات التاجر للدخول إلى لوحة التحكم.</p>
           <input
-            type="text"
+            type="email"
             className={styles.inputField}
-            placeholder="رمز التاجر"
-            value={merchantCode}
-            onChange={(event) => setMerchantCode(event.target.value)}
+            placeholder="البريد الإلكتروني"
+            value={merchantEmail}
+            onChange={(event) => setMerchantEmail(event.target.value)}
           />
           <input
             type="text"
             className={styles.inputField}
-            placeholder="اسم المتجر"
-            value={merchantName}
-            onChange={(event) => setMerchantName(event.target.value)}
+            placeholder="رقم الهاتف"
+            value={merchantPhone}
+            onChange={(event) => setMerchantPhone(event.target.value)}
+          />
+          <input
+            type="password"
+            className={styles.inputField}
+            placeholder="كلمة المرور"
+            value={merchantPassword}
+            onChange={(event) => setMerchantPassword(event.target.value)}
           />
           <button type="button" className={styles.primaryButton} onClick={loginAsMerchant}>
             دخول لوحة التاجر
           </button>
+          {loginNotice ? <p className={styles.inlineNote}>{loginNotice}</p> : null}
         </section>
       </div>
     );
@@ -360,6 +423,17 @@ function MerchantPageContent() {
               <input className={styles.inputField} type="number" placeholder="الكمية" value={catalogForm.quantity} onChange={(event) => handleCatalogField("quantity", event.target.value)} />
               <input className={styles.inputField} type="text" placeholder="المقاسات (S,M,L)" value={catalogForm.sizes} onChange={(event) => handleCatalogField("sizes", event.target.value)} />
               <input className={styles.inputField} type="text" placeholder="الألوان (أسود, ذهبي)" value={catalogForm.colors} onChange={(event) => handleCatalogField("colors", event.target.value)} />
+              <input
+                className={styles.inputField}
+                type="file"
+                accept="image/*"
+                disabled={uploadingImage}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  void handleUploadProductImage(file);
+                  event.currentTarget.value = "";
+                }}
+              />
               <input className={styles.inputField} type="text" placeholder="روابط الصور المتعددة أو أسماء الملفات" value={catalogForm.images} onChange={(event) => handleCatalogField("images", event.target.value)} />
               <textarea className={`${styles.inputField} ${styles.inputTextarea}`} rows={4} placeholder="وصف المنتج (اختياري)" readOnly value="الوصف التفصيلي يُربط في API لاحقًا ضمن نفس payload." />
             </div>
@@ -390,7 +464,10 @@ function MerchantPageContent() {
                         <span>{product.price}</span>
                       </td>
                       <td>{product.category} / {product.subCategory}</td>
-                      <td>{product.images.length} صور</td>
+                      <td>
+                        {product.images[0] ? <img src={product.images[0]} alt={product.name} className={styles.productThumb} loading="lazy" /> : null}
+                        <span>{product.images.length} صور</span>
+                      </td>
                       <td>{product.quantity}</td>
                       <td className={styles.tableActions}>
                         <button type="button" className={styles.tableButton} onClick={() => handleEditProduct(product)}>تعديل</button>
@@ -425,6 +502,7 @@ function MerchantPageContent() {
                   <tr>
                     <th>رقم الطلب</th>
                     <th>العميل</th>
+                    <th>عناصر الطلب</th>
                     <th>الحالة</th>
                     <th>تحديث الحالة</th>
                     <th>الإجمالي</th>
@@ -436,6 +514,20 @@ function MerchantPageContent() {
                     <tr key={order.id}>
                       <td>{order.id}</td>
                       <td>{order.customer}</td>
+                      <td>
+                        <div className={styles.orderItemList}>
+                          {(order.items ?? []).map((item) => (
+                            <div key={item.id} className={styles.orderItemRow}>
+                              {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className={styles.orderItemImage} loading="lazy" /> : null}
+                              <div>
+                                <strong>{item.title}</strong>
+                                <span>{item.quantity} × {item.unitPrice}</span>
+                                <span>{item.size} • {item.color}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
                       <td>
                         <span className={`${styles.status} ${styles[`status${order.status}`]}`}>{statusLabel[order.status]}</span>
                       </td>

@@ -7,6 +7,7 @@ import { CustomerApp } from "@/components/app/CustomerApp";
 import { BrandName } from "@/components/brand/BrandName";
 import {
   applyRuntimeTranslations,
+  getLanguagePickerLabel,
   getLanguageLabel,
   getSavedLanguage,
   persistLanguage,
@@ -73,6 +74,68 @@ function getCategoryProducts(categoryId: string, categoryLabel: string) {
   return departmentProductsByCategory[categoryId] ?? buildCategoryProducts(categoryLabel);
 }
 
+function normalizeCategoryKey(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[_]+/g, "-");
+}
+
+function resolveCategoryImage(category: DynamicCategory) {
+  const key = `${normalizeCategoryKey(category.id)} ${normalizeCategoryKey(category.titleAr)}`;
+
+  if (/(\bwomen\b|\bwomens\b|\bwoman\b|نسائي|نساء|مرأ|امرا|حريمي)/.test(key)) {
+    return "/women.png";
+  }
+
+  if (/(\bmen\b|\bmens\b|رجال|رجالي)/.test(key)) {
+    return "/men.png";
+  }
+
+  if (/(shoes|shoe|sneaker|احذ|أحذ)/.test(key)) {
+    return "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(bags|bag|handbag|شنط|شنطاتي|حقيب|حقائب)/.test(key)) {
+    return "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(glasses|eyewear|sunglasses|نظار|نظارات)/.test(key)) {
+    return "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(beauty|makeup|cosmetic|cosmetics|مكياج|تجميل|جمال|عناية)/.test(key)) {
+    return "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=80";
+  }
+
+  if (/(perfumes|perfume|fragrance|عطور|عطر)/.test(key)) {
+    return "/perfumes.png";
+  }
+
+  if (/(kids|اطفال|أطفال|baby|child)/.test(key)) {
+    return "/kids.png";
+  }
+
+  if (/(electronics|الكترونيات|إلكترونيات|mobile|tech)/.test(key)) {
+    return "/electronics.png";
+  }
+
+  if (/(home|منزلي|منزل|بيت)/.test(key)) {
+    return "/home.png";
+  }
+
+  if (/(sports|رياضة|sport)/.test(key)) {
+    return "/sports.png";
+  }
+
+  if (/(accessories|اكسسوارات|إكسسوارات|مجوهرات)/.test(key)) {
+    return "/accessories.png";
+  }
+
+  return "/categories.png";
+}
+
 const departments = [
   "وصل حديثًا",
   "بدل وتفصيل",
@@ -103,14 +166,14 @@ export function OpeningExperience() {
     language === "en"
       ? dailyMessage.en
       : language === "he"
-        ? dailyMessage.en
+        ? ("he" in dailyMessage ? (dailyMessage as { he?: string }).he ?? dailyMessage.en : dailyMessage.en)
         : dailyMessage.ar;
 
   const openRoleApp = useCallback((role: Exclude<AppRole, "customer">) => {
     const url = new URL(window.location.href);
-    const currentPort = Number(url.port || "0");
+url.hostname = "10.0.0.22";
+const currentPort = Number(url.port || "0");
     let targetPort = role === "merchant" ? "3001" : "3002";
-
     if (currentPort > 0 && currentPort !== 3000) {
       targetPort = role === "merchant" ? String(currentPort + 1) : String(currentPort + 2);
     }
@@ -135,7 +198,7 @@ export function OpeningExperience() {
   }, [openRoleApp]);
 
   useEffect(() => {
-    setStage("portal");
+    setStage("advice");
   }, []);
 
   useEffect(() => {
@@ -318,7 +381,7 @@ export function OpeningExperience() {
                   aria-expanded={languageMenuOpen}
                   aria-haspopup="menu"
                 >
-                  <span>{`اللغة: ${getLanguageLabel(language)}`}</span>
+                  <span>{getLanguagePickerLabel(language)}</span>
                 </button>
                 {languageMenuOpen && (
                   <div className={styles.languageMenu} role="menu" aria-label="Language selector">
@@ -414,14 +477,18 @@ export function OpeningExperience() {
               />
             </div>
             <div className={styles.categoryGrid}>
-              {categories.map((category) => (
+              {categories
+                .filter((category) => !category.parentId || !categories.some((item) => item.id === category.parentId))
+                .map((category) => (
                 <button
                   key={category.id}
                   className={styles.categoryItem}
                   type="button"
                   onClick={() => openDepartment(category.id)}
                 >
-                  <span className={styles.itemIcon}>{category.icon}</span>
+                  <span className={styles.itemIcon}>
+                    <img src={resolveCategoryImage(category)} alt={category.titleAr} loading="lazy" />
+                  </span>
                   <span>{category.titleAr}</span>
                 </button>
               ))}
@@ -594,7 +661,7 @@ export function OpeningExperience() {
           <div className={styles.successCard}>
             <div className={styles.successBadge}>تمت بنجاح</div>
             <h1 className={styles.successTitle}>تم تأكيد الطلب</h1>
-            <p className={styles.successDescription} lang="ar" dir="rtl">
+            <p className={styles.successDescription}>
               شكراً لاختيارك <BrandName />. تم تأكيد طلبك وسيتم تحضيره الآن للشحن.
             </p>
             <div className={styles.successSummary}>

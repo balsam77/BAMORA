@@ -36,8 +36,8 @@
 .heroTitle {
   margin: 0;
   font-family: var(--bamora-font-display);
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  line-height: 1.05;
+  font-size: clamp(1.55rem, 2.9vw, 2.35rem);
+  line-height: 1.2;
   letter-spacing: 0.02em;
   color: var(--bamora-white);
 }
@@ -46,8 +46,8 @@
   margin: 0 auto;
   max-width: 48rem;
   color: var(--bamora-soft-white);
-  font-size: 1rem;
-  line-height: 1.9;
+  font-size: clamp(0.94rem, 0.2vw + 0.9rem, 1rem);
+  line-height: 1.65;
   opacity: 0.92;
 }
 
@@ -93,7 +93,7 @@
 
 .quickPickGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
   gap: var(--bamora-space-md);
   margin-top: var(--bamora-space-lg);
 }
@@ -133,7 +133,7 @@
 
 .categoryGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
   gap: var(--bamora-space-md);
   margin-top: var(--bamora-space-lg);
 }
@@ -150,7 +150,7 @@
 
 .featuredGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--bamora-space-md);
   margin-top: var(--bamora-space-lg);
 }
@@ -170,16 +170,62 @@
   margin: 0;
   color: var(--bamora-gold-light);
   font-size: 0.9rem;
-  direction: rtl;
-  text-align: right;
+  direction: inherit;
+  text-align: start;
+  line-height: 1.45;
 }
 
 @media (max-width: 720px) {
   .heroTitle {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
 
   .heroPanel {
     padding: var(--bamora-space-lg);
+  }
+}
+
+.heroSection,
+.heroPanel,
+.heroHeader,
+.heroActions,
+.sectionHeader,
+.quickPickSection,
+.categoriesSection,
+.featuredSection,
+.quickPickGrid,
+.categoryGrid,
+.featuredGrid,
+.quickCard,
+.categoryCard,
+.productCard {
+  min-width: 0;
+}
+
+.heroBadge,
+.heroTitle,
+.heroText,
+.sectionLabel,
+.sectionHeader h2,
+.sectionSubtext,
+.quickTitleEn,
+.quickTitleAr,
+.productDetail,
+.productAr {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 560px) {
+  .quickPickGrid,
+  .categoryGrid,
+  .featuredGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .quickCard,
+  .categoryCard,
+  .productCard {
+    min-height: 0;
   }
 }
