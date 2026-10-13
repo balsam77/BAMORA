@@ -78,6 +78,7 @@ Set these in Render's environment/secret controls, never in committed files:
 | --- | --- |
 | `NODE_ENV` | `production` |
 | `DATABASE_URL` | The existing authorized PostgreSQL connection; do not replace the local configuration or change the database. |
+| `DATABASE_SSL_CA_FILE` | Optional absolute path to the database provider's official PEM CA certificate. On Render: `/etc/secrets/prod-ca-2021.crt`. |
 | `JWT_SECRET` | Random, strong secret, at least 32 characters; not a development default. |
 | `CORS_ORIGINS` | Comma-separated exact HTTPS origins for deployed Customer, Merchant, Admin and Business as applicable. No paths, trailing slash or wildcard. |
 | `UPLOAD_STORAGE` | `disabled` on Free. Production defaults to disabled when unset. `local` requires a separately approved persistent disk. |
@@ -89,6 +90,27 @@ Set these in Render's environment/secret controls, never in committed files:
 Do not change `PAYMENT_PROVIDER` or provider credentials in this deployment task.
 `db:generate` only generates Prisma Client; it is not a database migration.
 Render terminates HTTPS and forwards traffic to the application's assigned port.
+
+### Supabase database certificate trust
+
+For a Prisma `P1011` certificate-chain failure, obtain the official CA from the
+Supabase project's SSL configuration. Add its complete PEM content as a Render
+Secret File named `prod-ca-2021.crt` and set
+`DATABASE_SSL_CA_FILE=/etc/secrets/prod-ca-2021.crt` with `NODE_ENV=production`.
+The `.crt` extension is supported; the content must be PEM. Do not commit the
+certificate or a private key. Do not change `DATABASE_URL` or its password.
+
+The API validates that the file contains currently valid CA certificates and no
+private key, then passes its absolute path to native Prisma via `sslcert` in the
+runtime datasource URL. It retains `sslmode=require` and `sslaccept=strict`.
+It rejects unreadable, invalid or conflicting certificate settings.
+Never disable TLS verification. `NODE_EXTRA_CA_CERTS` alone is not a substitute
+for configuring native Prisma's certificate trust.
+
+Deploy a commit containing this support; older commits ignore the custom variable.
+Certificate metadata validation does not prove its source or that it matches the
+pooler's chain. Confirm actual TLS connectivity with startup logs and
+`/api/health/ready` after deployment. No migration or seed is needed for this fix.
 
 ### Persistent uploads
 

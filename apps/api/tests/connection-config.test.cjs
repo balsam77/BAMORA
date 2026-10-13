@@ -53,6 +53,42 @@ test("all production PostgreSQL connections require verified TLS while developme
   assert.throws(() => prismaConnectionUrl({}), /DATABASE_URL_MISSING_OR_INVALID/);
 });
 
+test("production CA file uses Prisma sslcert without changing credentials or disabling verification", () => {
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { rootCertificates } = require("node:tls");
+  const { X509Certificate } = require("node:crypto");
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), "bamora-ca-test-"));
+  const file = path.join(folder, "prod-ca-2021.crt");
+  const pem = rootCertificates.find(value => {
+    const ca = new X509Certificate(value);
+    return ca.ca && Date.parse(ca.validFrom) <= Date.now() && Date.parse(ca.validTo) > Date.now();
+  });
+  assert.ok(pem);
+  fs.writeFileSync(file, pem);
+  const env = { NODE_ENV: "production", DATABASE_URL: "postgresql://example.invalid/database", DATABASE_SSL_CA_FILE: file };
+  try {
+    const actual = new URL(prismaConnectionUrl(env));
+    assert.equal(actual.searchParams.get("sslcert"), file);
+    assert.equal(actual.searchParams.get("sslaccept"), "strict");
+    assert.equal(actual.searchParams.get("sslmode"), "require");
+    assert.equal(env.DATABASE_URL, "postgresql://example.invalid/database");
+    assert.throws(() => prismaConnectionUrl({ ...env, DATABASE_URL: env.DATABASE_URL + "?sslcert=other.pem" }), /DATABASE_CA_CONFIGURATION_CONFLICT/);
+    assert.throws(() => prismaConnectionUrl({ ...env, DATABASE_URL: env.DATABASE_URL + "?sslrootcert=other.pem" }), /DATABASE_CA_CONFIGURATION_CONFLICT/);
+    assert.throws(() => prismaConnectionUrl({ ...env, DATABASE_SSL_CA_FILE: "relative.pem" }), /DATABASE_CA_PATH_MUST_BE_ABSOLUTE/);
+    assert.throws(() => prismaConnectionUrl({ ...env, DATABASE_SSL_CA_FILE: path.join(folder, "missing.pem") }), /DATABASE_CA_FILE_UNREADABLE/);
+    fs.writeFileSync(file, "invalid certificate");
+    assert.throws(() => prismaConnectionUrl(env), /DATABASE_CA_CERTIFICATE_INVALID/);
+    fs.writeFileSync(file, pem + "\n-----BEGIN PRIVATE KEY-----\ninvalid\n-----END PRIVATE KEY-----");
+    assert.throws(() => prismaConnectionUrl(env), /DATABASE_CA_CERTIFICATE_INVALID/);
+    assert.equal(prismaConnectionUrl({ ...env, NODE_ENV: "development" }), env.DATABASE_URL);
+  } finally {
+    fs.unlinkSync(file);
+    fs.rmdirSync(folder);
+  }
+});
+
 test("installed Prisma Client accepts the configured datasourceUrl without connecting", async () => {
   const { PrismaService } = require("../dist/prisma/prisma.service");
   const previous = { NODE_ENV: process.env.NODE_ENV, DATABASE_URL: process.env.DATABASE_URL };

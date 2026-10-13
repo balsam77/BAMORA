@@ -1,4 +1,7 @@
 import { StartupFailure, validateDatabaseConfiguration } from "../common/startup-diagnostics";
+import { readFileSync } from "fs";
+import { isAbsolute } from "path";
+import { X509Certificate } from "crypto";
 
 export function prismaConnectionUrl(env: Record<string, string | undefined> = process.env) {
   validateDatabaseConfiguration(env);
@@ -21,6 +24,37 @@ export function prismaConnectionUrl(env: Record<string, string | undefined> = pr
     throw new StartupFailure("database-configuration", "SUPABASE_SOCKET_OVERRIDE_UNSUPPORTED");
   }
   const parameters = new URLSearchParams(url.search);
+  const certificateFile = env.DATABASE_SSL_CA_FILE?.trim();
+  if (certificateFile) {
+    if (!isAbsolute(certificateFile)) {
+      throw new StartupFailure("database-configuration", "DATABASE_CA_PATH_MUST_BE_ABSOLUTE");
+    }
+    let certificate: string;
+    try {
+      certificate = readFileSync(certificateFile, "utf8");
+    } catch {
+      throw new StartupFailure("database-configuration", "DATABASE_CA_FILE_UNREADABLE");
+    }
+    try {
+      const certificates = certificate.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g);
+      if (!certificates?.length || certificate.includes("PRIVATE KEY")) throw new Error("Invalid CA file");
+      for (const pem of certificates) {
+        const ca = new X509Certificate(pem);
+        if (!ca.ca || Date.parse(ca.validFrom) > Date.now() || Date.parse(ca.validTo) <= Date.now()) {
+          throw new Error("Invalid CA certificate");
+        }
+      }
+    } catch {
+      throw new StartupFailure("database-configuration", "DATABASE_CA_CERTIFICATE_INVALID");
+    }
+    for (const parameter of ["sslcert", "sslrootcert"]) {
+      const existing = parameters.get(parameter);
+      if (existing && existing !== certificateFile) {
+        throw new StartupFailure("database-configuration", "DATABASE_CA_CONFIGURATION_CONFLICT");
+      }
+    }
+    parameters.set("sslcert", certificateFile);
+  }
   parameters.set("sslmode", "require");
   parameters.set("sslaccept", "strict");
   // Keep credentials and the database path byte-for-byte; normalize only parameters.
