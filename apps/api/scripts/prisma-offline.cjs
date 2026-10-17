@@ -48,10 +48,11 @@ try {
     fs.mkdirSync(path.dirname(migrationFile), { recursive: true });
     fs.writeFileSync(migrationFile, result.stdout, { flag: "wx" });
   } else if (mode === "check") {
-    const normalize = (sql) => sql.replace(/\r\n/g, "\n").trim();
-    if (normalize(fs.readFileSync(migrationFile, "utf8")) !== normalize(result.stdout)) {
-      throw new Error("Initial migration differs from schema.prisma. Review the schema and migration history.");
-    }
+    const checked = spawnSync(process.execPath, [path.join(apiRoot, "scripts", "check-migrations.cjs")], {
+      cwd: apiRoot, input: result.stdout, encoding: "utf8", maxBuffer: 10 * 1024 * 1024,
+    });
+    if (checked.error) throw checked.error;
+    if (checked.status !== 0) throw new Error(checked.stderr || "Offline migration comparison failed.");
   }
 } finally {
   if (fs.existsSync(schemaFile)) fs.unlinkSync(schemaFile);

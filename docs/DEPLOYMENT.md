@@ -27,16 +27,18 @@ to GitHub. Do not upload `uploads`, build output, or local credentials.
 ### Initial database migration (separate approval required)
 
 `apps/api/prisma/migrations/20261011000000_initial/migration.sql` is generated from
-the complete current schema, including enums, tables, indexes and foreign keys.
+the initial schema, including enums, tables, indexes and foreign keys.
+The second migration, `20261013120000_guest_checkout_consent`, makes the order
+customer optional, changes the marketing default, and adds a consent timestamp.
+Deploy both SQL files together with the current `schema.prisma` and PostgreSQL
+`migration_lock.toml`; do not rewrite the initial migration.
 It creates structure only: no accounts, products, categories, shipping configuration
 or other seed data. A fresh database will not contain the existing catalog.
 
 - `pnpm --filter @bamora/api db:validate` validates the schema offline.
-- `pnpm --filter @bamora/api db:migration:check` compares the initial SQL with a
-  fresh offline Prisma diff from an empty schema. While this is the only migration,
-  it detects any schema changes not reflected in that initial migration. When
-  adding later migrations, replace this check with validation of the full history;
-  never rewrite an already applied migration.
+- `pnpm --filter @bamora/api db:migration:check` applies the complete SQL history
+  to disposable in-memory PostgreSQL and compares columns, types, defaults,
+  constraints, indexes and enums with a fresh offline Prisma schema diff.
 - `pnpm --filter @bamora/api build` generates Prisma Client before compiling.
   The API `typecheck` script also generates the client before checking types.
   Generation and validation use a temporary schema copy and a non-secret dummy URL;
@@ -48,8 +50,9 @@ or other seed data. A fresh database will not contain the existing catalog.
 For a genuinely empty, separately authorized database, the explicit deployment
 command is `pnpm --filter @bamora/api db:migrate:deploy`. **This writes schema and
 migration history and must not be run without approval.** It is deliberately absent
-from Render's build/start commands. Do not use `migrate dev`, `db push` or seed as
-deployment shortcuts.
+from Render's build command. Startup runs it only through the explicit initial
+provisioning activation documented below. Do not use `migrate dev`, `db push` or
+seed as deployment shortcuts.
 
 For the existing Supabase database with project tables, **do not apply this initial
 migration blindly**. First obtain an authorized backup and a read-only schema
@@ -112,7 +115,69 @@ Certificate metadata validation does not prove its source or that it matches the
 pooler's chain. Confirm actual TLS connectivity with startup logs and
 `/api/health/ready` after deployment. No migration or seed is needed for this fix.
 
+### Explicit initial production migration
+
+`pnpm --filter @bamora/api db:migrate:deploy` now runs a guarded CLI wrapper.
+Build the API first. Set `BAMORA_EXPECTED_DATABASE_PROJECT` to the confirmed
+reference `nmhccvyjttluanarixvu` and `DATABASE_SSL_CA_FILE` to its verified PEM CA.
+The wrapper uses the same strict runtime TLS configuration in memory for both
+the native Prisma preflight and the Prisma migration CLI. Stored `DATABASE_URL`
+and environment files are never changed, and CLI output containing connection
+metadata is withheld.
+
+Use `pnpm --filter @bamora/api db:migrate:deploy --check` to perform only the
+read-only connection, public-schema emptiness and schema-privilege preflight.
+Only the execution process environment supplies `DATABASE_URL`; no local dotenv
+fallback or `--env-file` argument is accepted. The project reference must match
+the direct endpoint or the Session Pooler username. Database `postgres`, schema
+`public`, and Prisma/client 6.19.3 are required.
+
+This command is intentionally limited to initial provisioning: it refuses existing
+non-extension tables, views, sequences or enum types in public, including a prior
+migration history. It is not a routine upgrade command. Review all pending
+migrations before execution. After the preflight, the explicit deploy command
+calls `prisma migrate deploy` once and verifies completed migration history and
+zero-row readiness reads.
+It does not seed or enable payments. Failed or partial migrations require manual
+investigation; never rerun blindly.
+
+### Render Free initial provisioning (separate approval required)
+
+Use the build command in the settings table above, including `--prod=false`,
+so the Prisma CLI remains available to initialization, and use
+`pnpm --filter @bamora/api start` as the Start Command. No Shell or Pre-deploy
+Command is required. Set the Health Check Path to `/api/health/ready`.
+The existing service can differ from `render.yaml`; editing the Blueprint alone
+does not update a manually configured service. Disable actual Auto-Deploy before
+publishing or changing activation settings, then trigger only one approved deploy.
+After explicit production-write approval, set in Render:
+
+- `NODE_ENV=production`
+- `BAMORA_EXPECTED_DATABASE_PROJECT=nmhccvyjttluanarixvu`
+- `BAMORA_INITIALIZE_DATABASE=true`
+- Keep the existing `DATABASE_URL`, payments configuration, Secret File, and
+  `DATABASE_SSL_CA_FILE=/etc/secrets/prod-ca-2021.crt` unchanged.
+
+The startup wrapper awaits guarded initialization before launching the API.
+Any failed preflight, migration or postcheck blocks API startup. On restarts,
+the exact two completed migration names and SQL checksums, plus readable schema,
+are required to skip migration. LF/CRLF differences are accepted, SQL edits are
+not. Missing, partial, failed or changed history stops startup.
+
+Run only one initializer instance and exclude concurrent deploys/schema writers:
+the read-only preflight is not an atomic lock spanning the CLI invocation.
+SQL is not wrapped in a whole-history transaction, so failures may leave partial
+structure and require investigation rather than a blind retry.
+After logs confirm completion and `/api/health/ready` returns HTTP 200, disable
+`BAMORA_INITIALIZE_DATABASE` by setting it to `false`. It defaults to disabled
+when absent, and invalid activation values fail explicitly.
+
 ### Persistent uploads
+
+The public `GET /api/catalog/products` route reuses the existing published-product
+search and accepts an optional string `q`. It requires no customer login and
+does not enable guest checkout, seed catalog data, or change payment settings.
+An initialized database without products returns an empty array.
 
 On Render Free, production defaults to disabled local storage. Startup does not create
 or access an upload directory, does not serve local `/uploads/` files, and product

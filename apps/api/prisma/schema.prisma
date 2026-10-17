@@ -470,7 +470,7 @@ model CartItem {
 model Order {
   id              String      @id @default(cuid())
   orderNumber     String      @unique @map("order_number")
-  customerId      String      @map("customer_id")
+  customerId      String?     @map("customer_id")
   status          OrderStatus @default(PENDING)
   subtotal        Decimal     @db.Decimal(10, 2)
   shippingTotal   Decimal     @default(0) @map("shipping_total") @db.Decimal(10, 2)
@@ -483,7 +483,7 @@ model Order {
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  customer   Customer           @relation(fields: [customerId], references: [id])
+  customer   Customer?          @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items      OrderItem[]
   subOrders  MerchantSubOrder[]
   payment    Payment?
@@ -858,7 +858,8 @@ model UserSetting {
   userId           String   @unique @map("user_id")
   preferredLanguage String  @default("ar") @map("preferred_language")
   preferredCurrency String  @default("ILS") @map("preferred_currency")
-  marketingEnabled Boolean  @default(true) @map("marketing_enabled")
+  marketingEnabled Boolean  @default(false) @map("marketing_enabled")
+  marketingConsentAt DateTime? @map("marketing_consent_at")
   pushEnabled      Boolean  @default(true) @map("push_enabled")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")

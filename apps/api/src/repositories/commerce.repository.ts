@@ -438,7 +438,7 @@ export class CommerceRepository {
             orderNumber: order.orderNumber,
             customer: {
               user: {
-                email: order.customer.user.email,
+                email: order.customer?.user.email ?? "-",
               },
             },
           },
