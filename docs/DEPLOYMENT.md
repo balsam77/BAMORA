@@ -64,13 +64,16 @@ No database has been baselined, migrated, seeded or externally verified by this 
 
 Use a Node **Web Service** from `balsam77/BAMORA`, branch `main`. Leave Root Directory
 empty (repository root). `render.yaml` is an optional Blueprint with the same settings.
+For this existing manually configured service, use the Build Command below rather
+than copying the Blueprint's `corepack enable` prefix: Render already provides
+pnpm, and enabling Corepack failed with `EROFS` on `/usr/bin/pnpm`.
 The Blueprint uses Render Free with local uploads disabled and no persistent disk.
 Automatic deployments are disabled in the Blueprint.
 
 | Setting | Value |
 | --- | --- |
 | Node | 22 |
-| Build Command | `corepack enable && pnpm install --frozen-lockfile --prod=false && pnpm --filter @bamora/api build` |
+| Build Command | `pnpm install --frozen-lockfile --prod=false && pnpm --filter @bamora/api build` |
 | Start Command | `pnpm --filter @bamora/api start` |
 | Health Check Path | `/api/health/ready` |
 | Upload storage | Disabled on Free; no disk required |
