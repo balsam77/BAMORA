@@ -324,6 +324,8 @@ export type StorefrontProduct = {
   topSelling: boolean;
   imageUrl?: string;
   imageUrls?: string[];
+  sizes?: string[];
+  colors?: string[];
 };
 
 export type CustomerCartItem = {
@@ -335,6 +337,98 @@ export type CustomerCartItem = {
   productName?: string;
   productImageUrl?: string;
 };
+
+export type ShippingDetails = {
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  street: string;
+  shippingZoneId: string;
+};
+
+export type GuestCheckoutInput = ShippingDetails & {
+  items: Array<{ productId: string; quantity: number; size: string; color: string }>;
+};
+
+export function hasCustomerSession() {
+  return getCurrentRole() === "customer" && Boolean(readStoredString(ACCESS_TOKEN_KEY));
+}
+
+export function readGuestName(): string {
+  if (typeof window === "undefined") return "";
+  return window.sessionStorage.getItem("bamoraGuestName") ?? "";
+}
+
+export function saveGuestName(value: string): string {
+  const name = value.trim();
+  if (name.length < 2 || name.length > 80) throw new Error("اكتب اسمًا بين حرفين و80 حرفًا.");
+  if (typeof window !== "undefined") window.sessionStorage.setItem("bamoraGuestName", name);
+  return name;
+}
+
+export function legacyCustomerPassword(email: string, phone: string): string {
+  return `bamora-${email.trim().toLowerCase()}-${phone.replace(/\D/g, "").slice(-8).padStart(8, "0")}`;
+}
+
+export function addGuestCartItem(
+  items: GuestCheckoutInput["items"],
+  item: GuestCheckoutInput["items"][number],
+): GuestCheckoutInput["items"] {
+  const existing = items.find((entry) => entry.productId === item.productId && entry.size === item.size && entry.color === item.color);
+  const quantity = (existing?.quantity ?? 0) + item.quantity;
+  if (!Number.isInteger(item.quantity) || item.quantity < 1 || quantity > 20) throw new Error("الحد الأقصى 20 قطعة لكل خيار.");
+  if (!existing && items.length >= 30) throw new Error("الحد الأقصى 30 خيارًا في السلة.");
+  return existing
+    ? items.map((entry) => entry === existing ? { ...entry, quantity } : entry)
+    : [...items, { ...item }];
+}
+
+export async function getPublicProducts(query = ""): Promise<StorefrontProduct[]> {
+  const products = await apiRequest<Array<{
+    id: string;
+    name: string;
+    price: string;
+    detail: string;
+    category: string;
+    images: string[];
+    sizes: string[];
+    colors: string[];
+  }>>(`/api/catalog/products?q=${encodeURIComponent(query)}`, {}, { skipAuth: true });
+  return products.map((product, index) => ({
+    id: product.id,
+    titleAr: product.name,
+    price: formatIls(Number(product.price)),
+    detail: product.detail,
+    reviewCount: 0,
+    averageRating: 0,
+    category: product.category,
+    featured: index < 3,
+    topSelling: false,
+    imageUrl: product.images[0] ? toPublicAssetUrl(product.images[0]) : undefined,
+    imageUrls: product.images.map(toPublicAssetUrl),
+    sizes: product.sizes,
+    colors: product.colors,
+  }));
+}
+
+export function getPublicShippingZones() {
+  return apiRequest<Array<{ id: string; code: string; baseRate: number }>>("/api/catalog/shipping-zones", {}, { skipAuth: true });
+}
+
+export function checkoutAsGuest(input: GuestCheckoutInput) {
+  return apiRequest<CheckoutReceipt>("/api/catalog/checkout", {
+    method: "POST",
+    body: JSON.stringify(input),
+  }, { skipAuth: true });
+}
+
+export function checkoutWithShipping(shipping: ShippingDetails) {
+  return apiRequest<CheckoutReceipt>("/api/customer/checkout", {
+    method: "POST",
+    body: JSON.stringify(shipping),
+  });
+}
 
 export type CustomerOrder = {
   id: string;
@@ -349,6 +443,14 @@ export type CustomerNotification = {
   id: string;
   title: string;
   detail: string;
+};
+
+export type CheckoutReceipt = {
+  id: string;
+  orderNumber: string;
+  status: string;
+  total: string;
+  payment: { status: string; checkoutUrl?: string };
 };
 
 export type CustomerReviewInput = {

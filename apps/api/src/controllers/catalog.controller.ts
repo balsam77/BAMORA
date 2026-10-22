@@ -1,5 +1,6 @@
-import { BadRequestException, Controller, Get, Query } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Post, Query } from "@nestjs/common";
 import { CommerceService } from "../services/commerce.service";
+import { GuestCheckoutDto } from "./guest-checkout.dto";
 
 @Controller("api/catalog")
 export class CatalogController {
@@ -16,5 +17,15 @@ export class CatalogController {
       throw new BadRequestException("q must be a string.");
     }
     return this.commerceService.searchProducts({ q: q ?? "" });
+  }
+
+  @Get("shipping-zones")
+  shippingZones() {
+    return this.commerceService.publicShippingZones();
+  }
+
+  @Post("checkout")
+  checkout(@Body() body: GuestCheckoutDto) {
+    return this.commerceService.guestCheckout(body);
   }
 }

@@ -5,15 +5,25 @@ import { AppShell } from "@/components/app/AppShell";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { BamoraLogo, Button, Card } from "@bamora/ui";
 import {
+  addGuestCartItem,
+  checkoutAsGuest,
+  checkoutWithShipping,
   clearRoleSession,
   createCustomerRepository,
+  getPublicProducts,
+  getPublicShippingZones,
   getCurrentRole,
+  hasCustomerSession,
   hasRoleAccess,
+  legacyCustomerPassword,
   setCurrentRole,
+  type CheckoutReceipt,
   type CustomerAddress,
   type CustomerNotification,
   type CustomerOrder,
   type CustomerProfile,
+  type GuestCheckoutInput,
+  type ShippingDetails,
   type StorefrontProduct,
 } from "@bamora/platform";
 import { BrandName } from "@/components/brand/BrandName";
@@ -33,7 +43,7 @@ import {
 import styles from "./CustomerApp.module.css";
 import { customerPaymentsEnabled, paymentUnavailableMessage } from "@/lib/paymentAvailability";
 
-type PageKey = "home" | "shop" | "favorites" | "offers" | "help" | "profile";
+type PageKey = "home" | "shop" | "favorites" | "offers" | "help" | "profile" | "cart";
 
 type Product = {
   id: string;
@@ -44,6 +54,8 @@ type Product = {
   averageRating: number;
   category?: string;
   imageUrl?: string;
+  sizes?: string[];
+  colors?: string[];
 };
 
 type CategorySelection = Pick<DynamicCategory, "id" | "titleAr">;
@@ -83,13 +95,6 @@ function normalizeCategoryKey(value: string) {
     .trim()
     .replace(/\s+/g, "-")
     .replace(/[_]+/g, "-");
-}
-
-function buildAuthSecret(email: string, phone: string) {
-  const normalizedEmail = email.trim().toLowerCase();
-  const digits = phone.replace(/\D/g, "");
-  const phoneSeed = digits.slice(-8).padStart(8, "0");
-  return `bamora-${normalizedEmail}-${phoneSeed}`;
 }
 
 function getCategoryImage(category: Pick<DynamicCategory, "id" | "titleAr">) {
@@ -337,12 +342,15 @@ function mapStorefrontProduct(product: StorefrontProduct): Product {
     averageRating: product.averageRating,
     category: product.category,
     imageUrl: product.imageUrl,
+    sizes: product.sizes,
+    colors: product.colors,
   };
 }
 
 const navItems: { id: PageKey; label: string; icon: string }[] = [
   { id: "home", label: "الرئيسية", icon: "🏠" },
   { id: "shop", label: "تسوق", icon: "🛍️" },
+  { id: "cart", label: "السلة", icon: "🛒" },
   { id: "favorites", label: "المفضلة", icon: "❤️" },
   { id: "offers", label: "العروض", icon: "🎁" },
   { id: "help", label: "مساعدة", icon: "❓" },
@@ -1031,8 +1039,10 @@ function ProductDetailsScreen({
   onCheckout: (product: Product, size: string, color: string) => void;
   onToggleFavorite: (productId: string) => Promise<void>;
 }) {
-  const [selectedSize, setSelectedSize] = useState("M");
-  const [selectedColor, setSelectedColor] = useState("#f5c07e");
+  const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] ?? "");
+  const [selectedColor, setSelectedColor] = useState(product.colors?.[0] ?? "");
+  const availableSizes = product.sizes ?? [];
+  const availableColors = product.colors ?? [];
   const discount = getReviewDiscount(product.reviewCount);
 
   return (
@@ -1065,24 +1075,23 @@ function ProductDetailsScreen({
           <div className={styles.optionGroup}>
             <p className={styles.sectionTag}>اللون</p>
             <div className={styles.colorRow}>
-              {['#f5c07e', '#c87a4d', '#4d5fa8', '#a84d7f', '#2f3a2c'].map((color) => (
+              {availableColors.map((color) => (
                 <button
                   key={color}
                   type="button"
-                  className={
-                    selectedColor === color ? styles.colorSwatchActive : styles.colorSwatch
-                  }
-                  style={{ background: color }}
+                  className={selectedColor === color ? styles.sizeButtonActive : styles.sizeButton}
+                  aria-pressed={selectedColor === color}
                   onClick={() => setSelectedColor(color)}
-                />
+                >{color}</button>
               ))}
+              {availableColors.length === 0 && <span className={styles.sectionHint}>لا تتوفر خيارات ألوان حاليًا.</span>}
             </div>
           </div>
 
           <div className={styles.optionGroup}>
             <p className={styles.sectionTag}>المقاس</p>
             <div className={styles.sizeRow}>
-              {['XS', 'S', 'M', 'L', 'XL'].map((size) => (
+              {availableSizes.map((size) => (
                 <button
                   key={size}
                   type="button"
@@ -1092,12 +1101,11 @@ function ProductDetailsScreen({
                   {size}
                 </button>
               ))}
+              {availableSizes.length === 0 && <span className={styles.sectionHint}>لا تتوفر مقاسات حاليًا.</span>}
             </div>
           </div>
 
-          <p className={styles.sectionSubtext}>
-            فستان سهرة أنيق مصنوع من قماش عالي الجودة للمناسبات الخاصة.
-          </p>
+          <p className={styles.sectionSubtext}>{product.detail || "تفاصيل المنتج ستتوفر قريبًا."}</p>
 
           <div className={styles.productDetailActions}>
             <Button variant="primary" onClick={() => onCheckout(product, selectedSize, selectedColor)}>أضف إلى السلة</Button>
@@ -1174,15 +1182,101 @@ function CheckoutScreen({
   );
 }
 
-function OrderSuccessScreen({ product, onGoHome }: { product: Product; onGoHome: () => void }) {
+function GuestCheckoutScreen({
+  product,
+  onBack,
+  onConfirm,
+  paymentNotice,
+}: {
+  product: Product;
+  onBack: () => void;
+  onConfirm: (shipping: ShippingDetails) => Promise<void>;
+  paymentNotice: string | null;
+}) {
+  const [zones, setZones] = useState<Array<{ id: string; code: string; baseRate: number }>>([]);
+  const [zoneError, setZoneError] = useState("");
+  const [shipping, setShipping] = useState<ShippingDetails>({
+    name: "",
+    phone: "",
+    email: "",
+    city: "",
+    street: "",
+    shippingZoneId: "",
+  });
+
+  useEffect(() => {
+    let active = true;
+    getPublicShippingZones().then((available) => {
+      if (!active) return;
+      setZones(available);
+      if (available[0]) setShipping((value) => ({ ...value, shippingZoneId: available[0].id }));
+    }).catch((error: unknown) => {
+      if (active) setZoneError(error instanceof Error ? error.message : "تعذر تحميل مناطق التوصيل.");
+    });
+    return () => { active = false; };
+  }, []);
+
+  const update = (key: keyof ShippingDetails, value: string) => setShipping((current) => ({ ...current, [key]: value }));
+
+  return (
+    <div className={styles.screen}>
+      <section className={styles.titleRow}>
+        <button type="button" className={styles.backButton} onClick={onBack}>‹</button>
+        <div>
+          <p className={styles.sectionTag}>إتمام الطلب كزائر</p>
+          <h2>بيانات التواصل والتوصيل</h2>
+        </div>
+      </section>
+      <section className={styles.contactSection}>
+        <div className={styles.contactCard}>
+          <span className={styles.contactTag}>المنتج المختار</span>
+          <h3>{product.titleAr}</h3>
+          <p>{product.price}</p>
+        </div>
+        <form className={styles.contactForm} onSubmit={(event) => { event.preventDefault(); void onConfirm(shipping); }}>
+          <label><span>الاسم الكامل</span><input required minLength={2} maxLength={80} autoComplete="name" className={styles.contactField} value={shipping.name} onChange={(event) => update("name", event.target.value)} /></label>
+          <label><span>رقم الهاتف للتواصل بشأن الطلب</span><input required type="tel" minLength={7} maxLength={32} autoComplete="tel" className={styles.contactField} value={shipping.phone} onChange={(event) => update("phone", event.target.value)} /></label>
+          <label><span>البريد الإلكتروني للتواصل بشأن الطلب</span><input required type="email" autoComplete="email" className={styles.contactField} value={shipping.email} onChange={(event) => update("email", event.target.value)} /></label>
+          <label><span>المدينة</span><input required minLength={2} maxLength={100} autoComplete="address-level2" className={styles.contactField} value={shipping.city} onChange={(event) => update("city", event.target.value)} /></label>
+          <label><span>عنوان التوصيل</span><input required minLength={3} maxLength={200} autoComplete="street-address" className={styles.contactField} value={shipping.street} onChange={(event) => update("street", event.target.value)} /></label>
+          <label>
+            <span>منطقة التوصيل</span>
+            <select required className={styles.contactField} value={shipping.shippingZoneId} onChange={(event) => update("shippingZoneId", event.target.value)}>
+              {zones.map((zone) => <option key={zone.id} value={zone.id}>{zone.code} — ₪{zone.baseRate}</option>)}
+            </select>
+          </label>
+          {zoneError && <p className={styles.sectionHint} role="alert">{zoneError}</p>}
+          {zones.length === 0 && !zoneError && <p className={styles.sectionHint}>جارٍ تحميل مناطق التوصيل...</p>}
+          <button type="submit" className={styles.primaryButton} disabled={!customerPaymentsEnabled || zones.length === 0}>تأكيد الطلب</button>
+          {paymentNotice && <p role="status">{paymentNotice}</p>}
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function OrderSuccessScreen({
+  product,
+  receipt,
+  onGoHome,
+}: {
+  product: Product;
+  receipt: CheckoutReceipt | null;
+  onGoHome: () => void;
+}) {
   return (
     <div className={styles.screen}>
       <section className={styles.confirmationCard}>
-        <span className={styles.confirmationBadge}>تمت العملية</span>
-        <h2>تم تأكيد طلبك بنجاح</h2>
+        <span className={styles.confirmationBadge}>{receipt?.payment.status === "PAID" ? "تم الدفع" : "تم استلام الطلب"}</span>
+        <h2>{receipt?.payment.status === "PAID" ? "تم تأكيد طلبك بنجاح" : "استُلم طلبك بانتظار إتمام الدفع"}</h2>
         <p>
-          تم استلام طلب {product.titleAr} بقيمة {product.price}، وسيصلك تحديث الشحن قريبًا.
+          رقم الطلب: {receipt?.orderNumber ?? "—"}. المنتج: {product.titleAr}. إجمالي الطلب: {receipt?.total ?? product.price}.
         </p>
+        {receipt?.payment.checkoutUrl && (
+          <a className={styles.primaryButton} href={receipt.payment.checkoutUrl} target="_blank" rel="noreferrer">
+            الانتقال إلى الدفع الآمن
+          </a>
+        )}
         <div className={styles.profileActionButtons}>
           <button type="button" className={styles.secondaryButton} onClick={onGoHome}>العودة للرئيسية</button>
           <button type="button" className={styles.primaryButton} onClick={onGoHome}>متابعة التسوق</button>
@@ -1863,7 +1957,7 @@ function CustomerAuthScreen({
         <div>
           <span className={styles.sectionTag}>بوابة العميل</span>
           <h2>{mode === "login" ? "تسجيل الدخول" : "إنشاء حساب جديد"}</h2>
-          <p>أكمل بياناتك للوصول إلى المفضلة، السلة، الطلبات، والدفع.</p>
+          <p>سجّل الدخول إلى حسابك السابق لمتابعة طلباتك ومفضلاتك.</p>
         </div>
       </section>
 
@@ -1939,10 +2033,10 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
   const [mirrorCategory, setMirrorCategory] = useState<MirrorCategory>("women");
   const [currentRole, setCurrentRoleState] = useState<"customer" | "merchant" | "super-admin" | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [authFullName, setAuthFullName] = useState("عميل BAMORA");
   const [authPhone, setAuthPhone] = useState("");
-  const [authEmail, setAuthEmail] = useState("customer@bamora.com");
+  const [authEmail, setAuthEmail] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -1952,6 +2046,8 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
+  const [guestCart, setGuestCart] = useState<GuestCheckoutInput["items"]>([]);
+  const [checkoutReceipt, setCheckoutReceipt] = useState<CheckoutReceipt | null>(null);
   const [dataError, setDataError] = useState("");
 
   const hydrateCustomerData = async () => {
@@ -1969,7 +2065,8 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
     let isMounted = true;
     const storedRole = getCurrentRole();
     setCurrentRoleState(storedRole);
-    setIsAuthenticated(storedRole === "customer");
+    const authenticated = hasCustomerSession();
+    setIsAuthenticated(authenticated);
 
     resolveDynamicCategories().then((resolved) => {
       if (!isMounted || resolved.length === 0) {
@@ -1979,7 +2076,13 @@ export function CustomerApp({ language: languageProp, onLanguageChange }: Custom
       setCategories(resolved);
     });
 
-    if (storedRole === "customer") {
+    getPublicProducts().then((products) => {
+      if (isMounted) setStoreProducts(products);
+    }).catch((error: unknown) => {
+      if (isMounted) setDataError(error instanceof Error ? error.message : "تعذر تحميل المنتجات.");
+    });
+
+    if (authenticated) {
       hydrateCustomerData().catch((error) => {
         if (!isMounted) {
           return;
@@ -2203,22 +2306,38 @@ const productsInSelectedCategory = useMemo(() => {
     setPage("shop");
   };
 
-  const handleRateProduct = (product: Product) => setReviewProduct(product);
+  const handleRateProduct = (product: Product) => {
+    if (!isAuthenticated) {
+      setPage("profile");
+      return;
+    }
+    setReviewProduct(product);
+  };
   const closeReview = () => setReviewProduct(null);
   const handleSelectProduct = (product: Product) => setSelectedProduct(product);
   const closeProductDetails = () => setSelectedProduct(null);
 
   const startCheckout = async (product: Product, size: string, color: string) => {
-    await customerRepository.addToCart({ productId: product.id, quantity: 1, size, color });
-    setSelectedProduct(null);
-    setReviewProduct(null);
-    setCheckoutProduct(product);
-    await hydrateCustomerData();
+    try {
+      if (!size || !color) throw new Error("اختر مقاسًا ولونًا متاحين للمنتج.");
+      if (isAuthenticated) {
+        await customerRepository.addToCart({ productId: product.id, quantity: 1, size, color });
+        setCheckoutProduct(product);
+        await hydrateCustomerData();
+      } else {
+        setGuestCart(addGuestCartItem(guestCart, { productId: product.id, quantity: 1, size, color }));
+        setPage("cart");
+      }
+      setSelectedProduct(null);
+      setReviewProduct(null);
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : "تعذر إضافة المنتج إلى السلة.");
+    }
   };
 
   const closeCheckout = () => setCheckoutProduct(null);
 
-  const confirmOrder = async () => {
+  const confirmOrder = async (shipping?: ShippingDetails) => {
     if (!customerPaymentsEnabled) {
       setDataError(paymentUnavailableMessage(language));
       return;
@@ -2228,10 +2347,20 @@ const productsInSelectedCategory = useMemo(() => {
     }
 
     try {
-      await customerRepository.checkout();
+      let receipt: CheckoutReceipt | null = null;
+      if (isAuthenticated) {
+        if (shipping) receipt = await checkoutWithShipping(shipping);
+        else await customerRepository.checkout();
+      }
+      else {
+        if (!shipping || guestCart.length === 0) throw new Error("أدخل بيانات التوصيل وتأكد من وجود منتجات في السلة.");
+        receipt = await checkoutAsGuest({ ...shipping, items: guestCart });
+        setGuestCart([]);
+      }
+      setCheckoutReceipt(receipt);
       setCompletedOrderProduct(checkoutProduct);
       setCheckoutProduct(null);
-      await hydrateCustomerData();
+      if (isAuthenticated) await hydrateCustomerData();
     } catch (error) {
       setDataError(error instanceof Error ? error.message : "Checkout failed.");
     }
@@ -2239,6 +2368,7 @@ const productsInSelectedCategory = useMemo(() => {
 
   const finishOrder = () => {
     setCompletedOrderProduct(null);
+    setCheckoutReceipt(null);
     setPage("home");
   };
 
@@ -2262,6 +2392,10 @@ const productsInSelectedCategory = useMemo(() => {
   };
 
   const toggleFavorite = async (productId: string) => {
+    if (!isAuthenticated) {
+      setFavoriteIds((ids) => ids.includes(productId) ? ids.filter((id) => id !== productId) : [...ids, productId]);
+      return;
+    }
     await customerRepository.toggleFavorite(productId);
     await hydrateCustomerData();
   };
@@ -2273,7 +2407,7 @@ const productsInSelectedCategory = useMemo(() => {
       return;
     }
 
-    const generatedPassword = buildAuthSecret(authEmail, authPhone);
+    const generatedPassword = legacyCustomerPassword(authEmail, authPhone);
 
     setAuthLoading(true);
     try {
@@ -2372,7 +2506,7 @@ const productsInSelectedCategory = useMemo(() => {
               <button type="button" className={styles.primaryButton} onClick={handleLogout}>تبديل الحساب</button>
             </div>
           </section>
-        ) : !isAuthenticated ? (
+        ) : !isAuthenticated && page === "profile" ? (
           <CustomerAuthScreen
             mode={authMode}
             fullName={authFullName}
@@ -2388,16 +2522,25 @@ const productsInSelectedCategory = useMemo(() => {
             onSubmit={handleAuthSubmit}
           />
         ) : completedOrderProduct ? (
-          <OrderSuccessScreen product={completedOrderProduct} onGoHome={finishOrder} />
+          <OrderSuccessScreen product={completedOrderProduct} receipt={checkoutReceipt} onGoHome={finishOrder} />
         ) : checkoutProduct ? (
-          <CheckoutScreen
-            product={checkoutProduct}
-            profile={defaultProfile}
-            defaultAddress={defaultAddress}
-            onBack={closeCheckout}
-            onConfirm={() => void confirmOrder()}
-            paymentNotice={customerPaymentsEnabled ? dataError : paymentUnavailableMessage(language)}
-          />
+          isAuthenticated ? (
+            <CheckoutScreen
+              product={checkoutProduct}
+              profile={defaultProfile}
+              defaultAddress={defaultAddress}
+              onBack={closeCheckout}
+              onConfirm={() => void confirmOrder()}
+              paymentNotice={customerPaymentsEnabled ? dataError : paymentUnavailableMessage(language)}
+            />
+          ) : (
+            <GuestCheckoutScreen
+              product={checkoutProduct}
+              onBack={closeCheckout}
+              onConfirm={confirmOrder}
+              paymentNotice={customerPaymentsEnabled ? dataError : paymentUnavailableMessage(language)}
+            />
+          )
         ) : selectedProduct ? (
           <ProductDetailsScreen
             product={selectedProduct}
@@ -2422,7 +2565,13 @@ const productsInSelectedCategory = useMemo(() => {
               />
             )}
             {page === "shop" && (
-              <ShopScreen
+              storeProducts.length === 0 ? (
+                <section className={styles.confirmationCard} role="status">
+                  <span className={styles.confirmationBadge}>قريبًا</span>
+                  <h2>نحضّر لك تجربة تسوّق مميزة</h2>
+                  <p>سيظهر الكتالوج هنا عند توفر المنتجات.</p>
+                </section>
+              ) : <ShopScreen
                 mainCategories={mainCategories}
                 selectedMainCategory={selectedMainCategory}
                 subCategories={selectedSubCategories}
@@ -2437,6 +2586,35 @@ const productsInSelectedCategory = useMemo(() => {
                 onOpenOffers={() => setPage("offers")}
                 language={language}
               />
+            )}
+            {page === "cart" && (
+              <section className={styles.contactSection}>
+                <div className={styles.titleRow}><h2>سلة التسوق</h2></div>
+                {(isAuthenticated ? [] : guestCart).map((item, index) => {
+                  const product = allProductsView.find((entry) => entry.id === item.productId);
+                  return (
+                    <article key={`${item.productId}-${item.size}-${item.color}`} className={styles.contactCard}>
+                      <h3>{product?.titleAr ?? item.productId}</h3>
+                      <p>{product?.price} · {item.size} / {item.color} · الكمية: {item.quantity}</p>
+                      <div className={styles.contactActions}>
+                        <button type="button" className={styles.secondaryButton} onClick={() => {
+                          try { setGuestCart(addGuestCartItem(guestCart, { ...item, quantity: 1 })); }
+                          catch (error) { setDataError(error instanceof Error ? error.message : "تعذر تحديث السلة."); }
+                        }}>زيادة</button>
+                        <button type="button" className={styles.secondaryButton} onClick={() => setGuestCart(guestCart.map((entry, position) => position === index ? { ...entry, quantity: entry.quantity - 1 } : entry).filter((entry) => entry.quantity > 0))}>تقليل</button>
+                        <button type="button" className={styles.secondaryButton} onClick={() => setGuestCart((items) => items.filter((_, position) => position !== index))}>إزالة</button>
+                      </div>
+                    </article>
+                  );
+                })}
+                {guestCart.length === 0 ? <p className={styles.sectionHint}>السلة فارغة.</p> : (
+                  <button type="button" className={styles.primaryButton} onClick={() => {
+                    const product = allProductsView.find((entry) => entry.id === guestCart[0].productId);
+                    if (product) setCheckoutProduct(product);
+                    else setDataError("منتج السلة غير متاح في المتجر حاليًا.");
+                  }}>متابعة إلى Checkout</button>
+                )}
+              </section>
             )}
             {page === "favorites" && (
               <FavoritesScreen
@@ -2484,16 +2662,18 @@ const productsInSelectedCategory = useMemo(() => {
             onOpenProduct={openProductFromMirror}
           />
 
-          <BottomNav
-            items={navItems.map((item) => ({
-              id: item.id,
-              label: item.label,
-              icon: item.icon,
-              active: item.id === page,
-            }))}
-            onSelect={handleSelect}
-          />
         </>
+      )}
+      {(!currentRole || hasRoleAccess(currentRole, "customer")) && (
+        <BottomNav
+          items={navItems.filter((item) => !isAuthenticated || item.id !== "cart").map((item) => ({
+            id: item.id,
+            label: item.label,
+            icon: item.icon,
+            active: item.id === page,
+          }))}
+          onSelect={handleSelect}
+        />
       )}
     </AppShell>
   );

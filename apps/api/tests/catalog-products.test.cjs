@@ -28,15 +28,17 @@ test("public catalog products route uses published-product search without databa
     assert.equal(queries[0].where.OR, undefined);
 
     rows = [{
-      id: "fixture-product", titleAr: "Fixture product", createdAt: "2026-10-17T00:00:00.000Z",
+      id: "fixture-product", titleAr: "Fixture product", descriptionAr: "Test description", createdAt: "2026-10-17T00:00:00.000Z",
       images: [{ url: "https://example.invalid/product.jpg" }],
+      categories: [{ category: { parentId: null, nameAr: "Test category" } }],
       variants: [{ price: 25, color: "black", size: "M", inventory: { quantity: 3 } }],
     }];
     const found = await fetch(`${base}/api/catalog/products?q=Fixture`);
     assert.equal(found.status, 200);
     assert.deepEqual(await found.json(), [{
-      id: "fixture-product", name: "Fixture product", price: "25.00", stock: 3,
+      id: "fixture-product", name: "Fixture product", detail: "Test description", price: "25.00", stock: 3,
       colors: ["black"], sizes: ["M"], image: "https://example.invalid/product.jpg",
+      images: ["https://example.invalid/product.jpg"], category: "Test category",
       createdAt: "2026-10-17T00:00:00.000Z",
     }]);
     assert.equal(queries[1].where.status, "PUBLISHED");

@@ -5,6 +5,7 @@ import { basename, join } from "path";
 import { PaymentGatewayService } from "../payments/payment-gateway.service";
 import { CommerceRepository } from "../repositories/commerce.repository";
 import { getUploadsDirectory, localUploadsEnabled } from "../common/deployment-config";
+import { GuestCheckoutDto, ShippingDetailsDto } from "../controllers/guest-checkout.dto";
 
 type SessionUser = {
   sub: string;
@@ -383,16 +384,29 @@ export class CommerceService {
     return result.count > 0;
   }
 
-  async checkout(user?: SessionUser) {
+  async publicShippingZones() {
+    const zones = await this.repository.listShippingZones();
+    return zones.map(({ id, code, baseRate }) => ({ id, code, baseRate: this.decimalToNumber(baseRate) }));
+  }
+
+  async guestCheckout(input: GuestCheckoutDto) {
+    return this.createCheckout(undefined, input, input);
+  }
+
+  async checkout(user?: SessionUser, shipping?: ShippingDetailsDto) {
+    return this.createCheckout(user, shipping);
+  }
+
+  private async createCheckout(user?: SessionUser, shipping?: ShippingDetailsDto, guest?: GuestCheckoutDto) {
     this.paymentGateway.assertEnabled();
-    const customerId = await this.resolveCustomerId(user);
+    const customerId = guest ? null : await this.resolveCustomerId(user);
     await this.repository.ensureOrderItemImageSnapshotColumn();
     await this.repository.ensureMerchantSubOrderAttentionStateColumn();
     const hasMerchantPlanSchema = await this.repository.hasMerchantPlanTable();
     const hasMerchantAttentionStateType = await this.repository.hasPostgresType("MerchantAttentionState");
 
     return this.repository.runInTransaction(async (tx) => {
-      const customer = await tx.customer.findUnique({
+      const customer = customerId ? await tx.customer.findUnique({
         where: { id: customerId },
         include: {
           user: true,
@@ -404,18 +418,30 @@ export class CommerceService {
             take: 1,
           },
         },
-      });
+      }) : null;
 
-      if (!customer) {
+      if (!guest && !customer) {
         throw new NotFoundException("Customer not found.");
       }
 
-      const address = customer.addresses[0];
+      const zone = shipping
+        ? await tx.shippingZone.findFirst({ where: { id: shipping.shippingZoneId, active: true } })
+        : null;
+      if (shipping && !zone) {
+        throw new BadRequestException("Select an available shipping zone.");
+      }
+      const address = shipping && zone
+        ? { phone: shipping.phone, city: shipping.city, street: shipping.street, building: null, shippingZone: zone }
+        : customer?.addresses[0];
       if (!address) {
         throw new BadRequestException("Default shipping address is required before checkout.");
       }
+      const shippingName = shipping?.name ?? (`${customer?.firstName ?? ""} ${customer?.lastName ?? ""}`.trim() || customer?.user.email);
+      if (!shippingName) {
+        throw new BadRequestException("A recipient name is required to place an order.");
+      }
 
-      const cart = await tx.cart.findFirst({
+      const savedCart = customerId ? await tx.cart.findFirst({
         where: { customerId },
         include: {
           items: {
@@ -433,14 +459,46 @@ export class CommerceService {
             },
           },
         },
-      });
+      }) : null;
+      const guestItems: Array<{
+        variantId: string;
+        quantity: number;
+        variant: Prisma.ProductVariantGetPayload<{ include: { inventory: true; product: { include: { images: true } } } }>;
+      }> = [];
+      if (guest) {
+        for (const item of guest.items) {
+          const variant = await tx.productVariant.findFirst({
+            where: {
+              productId: item.productId,
+              size: item.size,
+              color: item.color,
+              product: { status: "PUBLISHED", merchant: { status: "ACTIVE" } },
+            },
+            include: { inventory: true, product: { include: { images: true } } },
+          });
+          if (!variant) {
+            throw new BadRequestException("Selected product option is unavailable.");
+          }
+          if (guestItems.some((entry) => entry.variantId === variant.id)) {
+            throw new BadRequestException("Duplicate product options are not allowed.");
+          }
+          guestItems.push({ variantId: variant.id, quantity: item.quantity, variant });
+        }
+      }
+      const cart = guest ? { id: null, items: guestItems } : savedCart;
 
       if (!cart || cart.items.length === 0) {
         throw new BadRequestException("Cart is empty.");
       }
 
       for (const cartItem of cart.items) {
-        const quantity = cartItem.variant.inventory?.quantity ?? 0;
+        if (!Number.isInteger(cartItem.quantity) || cartItem.quantity < 1 || cartItem.quantity > 20) {
+          throw new BadRequestException("Cart contains an invalid quantity.");
+        }
+        if (cartItem.variant.product.status !== "PUBLISHED") {
+          throw new BadRequestException("Product is no longer available.");
+        }
+        const quantity = (cartItem.variant.inventory?.quantity ?? 0) - (cartItem.variant.inventory?.reserved ?? 0);
         if (quantity < cartItem.quantity) {
           throw new BadRequestException(`Insufficient stock for ${cartItem.variant.product.titleAr}.`);
         }
@@ -460,7 +518,7 @@ export class CommerceService {
           subtotal: new Prisma.Decimal(subtotal),
           shippingTotal: new Prisma.Decimal(shippingTotal),
           total: new Prisma.Decimal(total),
-          shippingName: `${customer.firstName ?? ""} ${customer.lastName ?? ""}`.trim() || customer.user.email,
+          shippingName,
           shippingPhone: address.phone,
           shippingCity: address.city,
           shippingStreet: `${address.street}${address.building ? ` ${address.building}` : ""}`.trim(),
@@ -474,7 +532,7 @@ export class CommerceService {
         },
       });
 
-      const orderItems = [] as Array<{ id: string; merchantId: string; lineTotal: number }>;
+      const orderItems: Array<{ id: string; variantId: string; merchantId: string; lineTotal: number }> = [];
       for (const cartItem of cart.items) {
         const created = await tx.orderItem.create({
           data: {
@@ -489,14 +547,21 @@ export class CommerceService {
           },
         });
 
-        await tx.inventory.update({
-          where: { variantId: cartItem.variantId },
+        const stockUpdate = await tx.inventory.updateMany({
+          where: {
+            variantId: cartItem.variantId,
+            quantity: { gte: cartItem.quantity + (cartItem.variant.inventory?.reserved ?? 0) },
+            reserved: cartItem.variant.inventory?.reserved ?? 0,
+          },
           data: {
             quantity: {
               decrement: cartItem.quantity,
             },
           },
         });
+        if (stockUpdate.count !== 1) {
+          throw new BadRequestException("Insufficient stock; please refresh your cart.");
+        }
 
         const latestInventory = await tx.inventory.findUnique({ where: { variantId: cartItem.variantId } });
         if (latestInventory && latestInventory.quantity <= this.lowStockThreshold) {
@@ -511,6 +576,7 @@ export class CommerceService {
 
         orderItems.push({
           id: created.id,
+          variantId: cartItem.variantId,
           merchantId: cartItem.variant.product.merchantId,
           lineTotal: Number(cartItem.variant.price) * cartItem.quantity,
         });
@@ -518,7 +584,7 @@ export class CommerceService {
 
       const grouped = new Map<string, Array<{ orderItemId: string; quantity: number; lineTotal: number }>>();
       for (const cartItem of cart.items) {
-        const createdOrderItem = orderItems.find((item) => item.merchantId === cartItem.variant.product.merchantId && item.lineTotal === Number(cartItem.variant.price) * cartItem.quantity);
+        const createdOrderItem = orderItems.find((item) => item.variantId === cartItem.variantId);
         if (!createdOrderItem) {
           continue;
         }
@@ -699,28 +765,36 @@ export class CommerceService {
         },
       });
 
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      if (cart.id) {
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      }
 
-      await tx.notification.create({
-        data: {
-          userId: customer.userId,
-          audience: "USER",
-          type: "ORDER",
-          title: "تم إنشاء الطلب",
-          body: `رقم الطلب ${orderNumber} قيد المعالجة الآن.`,
-        },
-      });
+      if (customer) {
+        await tx.notification.create({
+          data: {
+            userId: customer.userId,
+            audience: "USER",
+            type: "ORDER",
+            title: "تم إنشاء الطلب",
+            body: `رقم الطلب ${orderNumber} قيد المعالجة الآن.`,
+          },
+        });
+      }
 
-      await tx.emailNotification.create({
-        data: {
-          toEmail: customer.user.email,
-          subject: `BAMORA order ${orderNumber}`,
-          body: `Order ${orderNumber} has been placed successfully.`,
-        },
-      });
+      const orderContactEmail = shipping?.email ?? customer?.user.email;
+      if (orderContactEmail) {
+        await tx.emailNotification.create({
+          data: {
+            toEmail: orderContactEmail,
+            subject: `BAMORA order ${orderNumber}`,
+            body: `Order ${orderNumber} has been placed successfully. Recipient: ${shippingName}.`,
+          },
+        });
+      }
 
       return {
         id: order.id,
+        orderNumber,
         merchantId: grouped.keys().next().value ?? null,
         customerId: order.customerId,
         status: order.status.toLowerCase(),
@@ -860,6 +934,7 @@ export class CommerceService {
     const products = await this.repository.db.product.findMany({
       where: {
         status: "PUBLISHED",
+        merchant: { status: "ACTIVE" },
         OR: filters.q
           ? [
               { titleAr: { contains: filters.q, mode: "insensitive" } },
@@ -887,6 +962,7 @@ export class CommerceService {
       },
       include: {
         images: true,
+        categories: { include: { category: true } },
         variants: {
           include: {
             inventory: true,
@@ -904,11 +980,14 @@ export class CommerceService {
       return {
         id: product.id,
         name: product.titleAr,
+        detail: product.descriptionAr,
         price: variant ? this.decimalToNumber(variant.price).toFixed(2) : "0.00",
         stock: variant?.inventory?.quantity ?? 0,
         colors: product.variants.map((item) => item.color),
         sizes: product.variants.map((item) => item.size),
         image: product.images[0]?.url,
+        images: product.images.map((image) => image.url),
+        category: (product.categories.find((entry) => entry.category.parentId != null) ?? product.categories[0])?.category.nameAr ?? "",
         createdAt: product.createdAt,
       };
     });

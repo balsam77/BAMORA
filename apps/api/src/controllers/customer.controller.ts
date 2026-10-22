@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestj
 import { CurrentUser, type AuthenticatedUser } from "../common/current-user.decorator";
 import { Roles } from "../common/roles.decorator";
 import { CommerceService } from "../services/commerce.service";
+import { ShippingDetailsDto } from "./guest-checkout.dto";
 
 @Roles("customer")
 @Controller("api/customer")
@@ -67,8 +68,8 @@ export class CustomerController {
   }
 
   @Post("checkout")
-  checkout(@CurrentUser() user: AuthenticatedUser | null) {
-    return this.commerceService.checkout(user ?? undefined);
+  checkout(@CurrentUser() user: AuthenticatedUser | null, @Body() body?: ShippingDetailsDto) {
+    return this.commerceService.checkout(user ?? undefined, body);
   }
 
   @Get("orders")
