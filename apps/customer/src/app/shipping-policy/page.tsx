@@ -6,18 +6,18 @@ export default function ShippingPolicyPage() {
       activeHref="/shipping-policy"
       title={{ ar: "سياسة الشحن والتوصيل", he: "מדיניות משלוחים", en: "Shipping and delivery policy" }}
       intro={{
-        ar: "تصف هذه الصفحة سياسة شحن BAMORA بصيغة مرنة قابلة للتعديل لاحقًا حسب نموذج العمل الفعلي للتجار والمنصة.",
-        he: "עמוד זה מתאר את מדיניות המשלוחים של BAMORA בפורמט גמיש הניתן לעדכון לפי מודל הפעילות בפועל של הסוחרים והפלטפורמה.",
-        en: "This page describes BAMORA shipping policy in an editable format for future operational adjustments.",
+        ar: "التوصيل متاح لكل مدن وبلدات إسرائيل بسعر ثابت 70 ₪ للطلب كاملًا.",
+        he: "משלוח זמין לכל הערים והיישובים בישראל במחיר קבוע של 70 ₪ להזמנה כולה.",
+        en: "Delivery is available to every city and town in Israel at a fixed rate of ILS 70 for the entire order.",
       }}
       sections={[
         {
           heading: { ar: "نطاق الخدمة", he: "אזורי שירות", en: "Service scope" },
           paragraphs: [
             {
-              ar: "تختلف مناطق التوصيل حسب التاجر ونوع المنتج. يتم عرض نطاق التغطية المتوقع أثناء إتمام الطلب.",
-              he: "אזורי המשלוח משתנים לפי סוחר וסוג מוצר. טווח הכיסוי הצפוי מוצג במהלך השלמת ההזמנה.",
-              en: "Delivery zones vary by merchant and product type. Expected coverage is shown during checkout.",
+              ar: "نغطي جميع مدن وبلدات إسرائيل دون قائمة مناطق محلية أو اختلاف في السعر حسب المدينة.",
+              he: "המשלוח מכסה את כל הערים והיישובים בישראל, ללא רשימת אזורים מקומית וללא שינוי במחיר לפי עיר.",
+              en: "We cover all cities and towns in Israel, without a local-zone list or city-based price differences.",
             },
           ],
         },
@@ -35,9 +35,9 @@ export default function ShippingPolicyPage() {
           heading: { ar: "تكلفة الشحن", he: "עלות משלוח", en: "Shipping fees" },
           paragraphs: [
             {
-              ar: "قد تختلف رسوم الشحن حسب المدينة وحجم الطلب وسياسة التاجر. يتم إظهار التكلفة النهائية قبل تأكيد الطلب.",
-              he: "דמי המשלוח עשויים להשתנות לפי עיר, היקף הזמנה ומדיניות הסוחר. העלות הסופית מוצגת לפני אישור ההזמנה.",
-              en: "Shipping fees may vary by city, order size, and merchant policy. Final cost is shown before order confirmation.",
+              ar: "رسوم التوصيل 70 ₪ مرة واحدة للطلب المدفوع كاملًا، مهما تعددت المنتجات أو الكميات أو التجار، ودون رسوم إضافية لكل طلب فرعي أو شحنة ضمن الطلب نفسه.",
+              he: "דמי המשלוח הם 70 ₪ פעם אחת להזמנה המשולמת כולה, ללא תלות במספר המוצרים, הכמויות או הסוחרים, וללא חיוב נוסף לכל הזמנת משנה או משלוח באותה הזמנה.",
+              en: "Delivery costs ILS 70 once for the entire paid order, regardless of products, quantities, or merchants, with no additional fee per sub-order or shipment within that order.",
             },
           ],
         },

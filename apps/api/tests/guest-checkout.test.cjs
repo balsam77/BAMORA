@@ -16,7 +16,6 @@ const request = {
   email: "recipient@example.invalid",
   city: "Test City",
   street: "Test Street",
-  shippingZoneId: "zone-1",
   items: [{ productId: "product-1", size: "M", color: "Black", quantity: 2 }],
 };
 
@@ -43,7 +42,7 @@ function checkoutFixture() {
   const tx = {
     customer: { findUnique: unexpected },
     cart: { findFirst: unexpected },
-    shippingZone: { findFirst: async () => ({ id: "zone-1", code: "IL", baseRate: new Prisma.Decimal(5) }) },
+    shippingZone: { findFirst: async () => { throw new Error("Checkout must not depend on local shipping zones."); } },
     productVariant: { findFirst: async () => variant },
     order: { create: create("order") },
     orderItem: { create: create("orderItem") },
@@ -73,13 +72,14 @@ function checkoutFixture() {
       externalId: "payment-test",
     }),
   };
-  return { service: new CommerceService(repository, gateway), writes, tx, gateway };
+  return { service: new CommerceService(repository, gateway), writes, tx, gateway, variant };
 }
 
 test("guest checkout uses server prices and stock, records contact email, and creates no account", async () => {
   const { service, writes } = checkoutFixture();
   const receipt = await service.guestCheckout({ ...request, total: 1, customerId: "untrusted" });
-  assert.equal(receipt.total, "55.00");
+  assert.equal(receipt.total, "120.00");
+  assert.equal(Number(writes.find((write) => write.table === "order").data.shippingTotal), 70);
   assert.ok(receipt.orderNumber.startsWith("BMO-"));
   assert.equal(writes.find((write) => write.table === "order").data.customerId, null);
   assert.equal(writes.find((write) => write.table === "order").data.shippingName, request.name);
@@ -89,7 +89,7 @@ test("guest checkout uses server prices and stock, records contact email, and cr
   assert.equal(stock.data.quantity.decrement, request.items[0].quantity);
 });
 
-test("guest checkout rejects duplicate options, inactive stock, and unknown shipping zones", async () => {
+test("guest checkout rejects duplicate options and unavailable stock", async () => {
   const duplicate = checkoutFixture();
   await assert.rejects(() => duplicate.service.guestCheckout({ ...request, items: [...request.items, ...request.items] }), /Duplicate/);
 
@@ -97,9 +97,72 @@ test("guest checkout rejects duplicate options, inactive stock, and unknown ship
   noStock.tx.inventory.updateMany = async () => ({ count: 0 });
   await assert.rejects(() => noStock.service.guestCheckout(request), /Insufficient stock/);
 
-  const noZone = checkoutFixture();
-  noZone.tx.shippingZone.findFirst = async () => null;
-  await assert.rejects(() => noZone.service.guestCheckout(request), /shipping zone/);
+});
+
+test("shipping costs 70 once for multiple products, quantities and merchants in any city", async () => {
+  for (const merchantId of ["merchant-1", "merchant-2"]) {
+    for (const city of ["חיפה", "אילת", "قرية جديدة"]) {
+      const fixture = checkoutFixture();
+      fixture.tx.productVariant.findFirst = async ({ where }) => ({
+        ...fixture.variant,
+        id: where.productId,
+        product: { ...fixture.variant.product, merchantId: where.productId === "product-1" ? "merchant-1" : merchantId },
+      });
+      const receipt = await fixture.service.guestCheckout({
+        ...request,
+        city,
+        shippingZoneId: "old-local-zone",
+        shippingTotal: 0,
+        items: [...request.items, { ...request.items[0], productId: "product-2", quantity: 3 }],
+      });
+      const order = fixture.writes.find(write => write.table === "order").data;
+      assert.equal(Number(order.subtotal), 125);
+      assert.equal(Number(order.shippingTotal), 70);
+      assert.equal(order.shippingZoneCode, "IL");
+      assert.equal(order.shippingCity, city);
+      assert.equal(receipt.total, "195.00");
+      assert.equal(Number(fixture.writes.find(write => write.table === "payment").data.amount), 195);
+    }
+  }
+});
+
+test("public delivery policy and compatibility zones need no database rows", async () => {
+  const service = new CommerceService({}, {});
+  assert.deepEqual(service.publicShippingPolicy(), {
+    countryCode: "IL", ratePerOrder: 70, currency: "ILS", chargeRule: "ONCE_PER_ORDER",
+  });
+  assert.deepEqual(await service.publicShippingZones(), [{ id: "IL", code: "IL", baseRate: 70 }]);
+});
+
+test("legacy checkout charges 70 once and ignores the saved local zone rate", async () => {
+  const fixture = checkoutFixture();
+  fixture.service.resolveCustomerId = async () => "customer-1";
+  fixture.tx.customer.findUnique = async () => ({
+    userId: "user-1", firstName: "Test", lastName: "Recipient",
+    user: { email: request.email },
+    addresses: [{
+      phone: request.phone, city: request.city, street: request.street, building: null,
+      shippingZone: { code: "PS_WB", baseRate: new Prisma.Decimal(999) },
+    }],
+  });
+  fixture.tx.cart.findFirst = async () => ({
+    id: "cart-1",
+    items: [
+      { variantId: "variant-1", quantity: 2, variant: fixture.variant },
+      { variantId: "variant-2", quantity: 3, variant: {
+        ...fixture.variant, id: "variant-2",
+        product: { ...fixture.variant.product, merchantId: "merchant-2" },
+      } },
+    ],
+  });
+  fixture.tx.notification.create = async () => ({});
+  fixture.tx.cartItem.deleteMany = async () => ({ count: 2 });
+  const receipt = await fixture.service.checkout();
+  const order = fixture.writes.find(write => write.table === "order").data;
+  assert.equal(order.customerId, "customer-1");
+  assert.equal(Number(order.shippingTotal), 70);
+  assert.equal(order.shippingZoneCode, "IL");
+  assert.equal(receipt.total, "195.00");
 });
 
 test("guest checkout keeps the payment-disabled guard before any database writes", async () => {
@@ -124,7 +187,8 @@ test("public checkout endpoint validates delivery data and returns the service r
   let submitted;
   const service = {
     searchProducts: async () => [],
-    publicShippingZones: async () => [{ id: "zone-1", code: "IL", baseRate: 5 }],
+    publicShippingZones: async () => [{ id: "IL", code: "IL", baseRate: 70 }],
+    publicShippingPolicy: () => ({ countryCode: "IL", ratePerOrder: 70, currency: "ILS", chargeRule: "ONCE_PER_ORDER" }),
     guestCheckout: async (body) => {
       submitted = body;
       return { id: "order-1", orderNumber: "BMO-test", status: "pending" };
@@ -142,7 +206,10 @@ test("public checkout endpoint validates delivery data and returns the service r
     const base = await app.getUrl();
     const zones = await fetch(`${base}/api/catalog/shipping-zones`);
     assert.equal(zones.status, 200);
-    assert.deepEqual(await zones.json(), [{ id: "zone-1", code: "IL", baseRate: 5 }]);
+    assert.deepEqual(await zones.json(), [{ id: "IL", code: "IL", baseRate: 70 }]);
+    const policy = await fetch(`${base}/api/catalog/shipping-policy`);
+    assert.equal(policy.status, 200);
+    assert.deepEqual(await policy.json(), service.publicShippingPolicy());
 
     const invalid = await fetch(`${base}/api/catalog/checkout`, {
       method: "POST",

@@ -1,5 +1,5 @@
 import { Type, Transform } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsInt, IsString, Length, Matches, Max, Min, ValidateNested } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsEmail, IsInt, IsOptional, IsString, Length, Matches, Max, Min, ValidateNested } from "class-validator";
 
 export class ShippingDetailsDto {
   @Transform(({ value }: { value: unknown }) => typeof value === "string" ? value.trim() : value)
@@ -27,9 +27,10 @@ export class ShippingDetailsDto {
   @Length(3, 200)
   street!: string;
 
+  @IsOptional()
   @IsString()
   @Length(1, 80)
-  shippingZoneId!: string;
+  shippingZoneId?: string;
 }
 
 export class GuestCartItemDto {

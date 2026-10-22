@@ -83,7 +83,6 @@ test("guest checkout submits only the selected cart and delivery details without
     email: "recipient@example.invalid",
     city: "Test City",
     street: "Test Street",
-    shippingZoneId: "zone-1",
     items: [{ productId: "product-1", quantity: 1, size: "M", color: "Black" }],
   };
   const receipt = await api.checkoutAsGuest(input);
@@ -91,4 +90,12 @@ test("guest checkout submits only the selected cart and delivery details without
   assert.equal(calls[0].options.headers.has("authorization"), false);
   assert.deepEqual(JSON.parse(calls[0].options.body), input);
   assert.equal(storage.size, 0);
+});
+
+test("public delivery policy is requested without authentication", async () => {
+  const policy = { countryCode: "IL", ratePerOrder: 70, currency: "ILS", chargeRule: "ONCE_PER_ORDER" };
+  const { api, calls } = platformFixture(() => policy);
+  assert.deepEqual(JSON.parse(JSON.stringify(await api.getPublicShippingPolicy())), policy);
+  assert.ok(calls[0].url.endsWith("/api/catalog/shipping-policy"));
+  assert.equal(calls[0].options.headers.has("authorization"), false);
 });

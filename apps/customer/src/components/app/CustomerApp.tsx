@@ -11,7 +11,7 @@ import {
   clearRoleSession,
   createCustomerRepository,
   getPublicProducts,
-  getPublicShippingZones,
+  getPublicShippingPolicy,
   getCurrentRole,
   hasCustomerSession,
   hasRoleAccess,
@@ -24,6 +24,7 @@ import {
   type CustomerProfile,
   type GuestCheckoutInput,
   type ShippingDetails,
+  type ShippingPolicy,
   type StorefrontProduct,
 } from "@bamora/platform";
 import { BrandName } from "@/components/brand/BrandName";
@@ -1120,6 +1121,36 @@ function ProductDetailsScreen({
   );
 }
 
+function useShippingPolicy() {
+  const [policy, setPolicy] = useState<ShippingPolicy | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    getPublicShippingPolicy().then((value) => {
+      if (!active) return;
+      if (value.countryCode !== "IL" || value.currency !== "ILS" ||
+          value.chargeRule !== "ONCE_PER_ORDER" || value.ratePerOrder !== 70) {
+        throw new Error("تعذر التحقق من سياسة التوصيل. يرجى المحاولة لاحقًا.");
+      }
+      setPolicy(value);
+    }).catch((reason: unknown) => {
+      if (active) setError(reason instanceof Error ? reason.message : "تعذر تحميل سياسة التوصيل.");
+    });
+    return () => { active = false; };
+  }, []);
+  return { policy, error };
+}
+
+function ShippingPolicySummary({ policy, error }: { policy: ShippingPolicy | null; error: string }) {
+  return (
+    <p className={styles.sectionHint} role={error ? "alert" : "status"}>
+      {error || (policy
+        ? `التوصيل لكل مدن وبلدات إسرائيل: ₪${policy.ratePerOrder} مرة واحدة للطلب كاملًا، مهما تعددت المنتجات أو التجار.`
+        : "جارٍ تحميل سياسة التوصيل...")}
+    </p>
+  );
+}
+
 function CheckoutScreen({
   product,
   profile,
@@ -1135,6 +1166,7 @@ function CheckoutScreen({
   onConfirm: () => void;
   paymentNotice: string | null;
 }) {
+  const { policy, error } = useShippingPolicy();
   return (
     <div className={styles.screen}>
       <section className={styles.titleRow}>
@@ -1152,7 +1184,6 @@ function CheckoutScreen({
           <p>{product.detail}</p>
           <div className={styles.contactActions}>
             <span className={styles.contactButton}>{product.price}</span>
-            <span className={styles.contactButton}>التوصيل خلال 48 ساعة</span>
           </div>
         </div>
 
@@ -1174,7 +1205,8 @@ function CheckoutScreen({
             <span>طريقة الدفع</span>
             <input type="text" value="PayPal" className={styles.contactField} readOnly />
           </label>
-          <button type="button" className={styles.primaryButton} disabled={!customerPaymentsEnabled} onClick={onConfirm}>تأكيد الطلب</button>
+          <ShippingPolicySummary policy={policy} error={error} />
+          <button type="button" className={styles.primaryButton} disabled={!customerPaymentsEnabled || !policy} onClick={onConfirm}>تأكيد الطلب</button>
           {paymentNotice && <p role="status">{paymentNotice}</p>}
         </form>
       </section>
@@ -1193,28 +1225,14 @@ function GuestCheckoutScreen({
   onConfirm: (shipping: ShippingDetails) => Promise<void>;
   paymentNotice: string | null;
 }) {
-  const [zones, setZones] = useState<Array<{ id: string; code: string; baseRate: number }>>([]);
-  const [zoneError, setZoneError] = useState("");
+  const { policy, error } = useShippingPolicy();
   const [shipping, setShipping] = useState<ShippingDetails>({
     name: "",
     phone: "",
     email: "",
     city: "",
     street: "",
-    shippingZoneId: "",
   });
-
-  useEffect(() => {
-    let active = true;
-    getPublicShippingZones().then((available) => {
-      if (!active) return;
-      setZones(available);
-      if (available[0]) setShipping((value) => ({ ...value, shippingZoneId: available[0].id }));
-    }).catch((error: unknown) => {
-      if (active) setZoneError(error instanceof Error ? error.message : "تعذر تحميل مناطق التوصيل.");
-    });
-    return () => { active = false; };
-  }, []);
 
   const update = (key: keyof ShippingDetails, value: string) => setShipping((current) => ({ ...current, [key]: value }));
 
@@ -1239,15 +1257,8 @@ function GuestCheckoutScreen({
           <label><span>البريد الإلكتروني للتواصل بشأن الطلب</span><input required type="email" autoComplete="email" className={styles.contactField} value={shipping.email} onChange={(event) => update("email", event.target.value)} /></label>
           <label><span>المدينة</span><input required minLength={2} maxLength={100} autoComplete="address-level2" className={styles.contactField} value={shipping.city} onChange={(event) => update("city", event.target.value)} /></label>
           <label><span>عنوان التوصيل</span><input required minLength={3} maxLength={200} autoComplete="street-address" className={styles.contactField} value={shipping.street} onChange={(event) => update("street", event.target.value)} /></label>
-          <label>
-            <span>منطقة التوصيل</span>
-            <select required className={styles.contactField} value={shipping.shippingZoneId} onChange={(event) => update("shippingZoneId", event.target.value)}>
-              {zones.map((zone) => <option key={zone.id} value={zone.id}>{zone.code} — ₪{zone.baseRate}</option>)}
-            </select>
-          </label>
-          {zoneError && <p className={styles.sectionHint} role="alert">{zoneError}</p>}
-          {zones.length === 0 && !zoneError && <p className={styles.sectionHint}>جارٍ تحميل مناطق التوصيل...</p>}
-          <button type="submit" className={styles.primaryButton} disabled={!customerPaymentsEnabled || zones.length === 0}>تأكيد الطلب</button>
+          <ShippingPolicySummary policy={policy} error={error} />
+          <button type="submit" className={styles.primaryButton} disabled={!customerPaymentsEnabled || !policy}>تأكيد الطلب</button>
           {paymentNotice && <p role="status">{paymentNotice}</p>}
         </form>
       </section>

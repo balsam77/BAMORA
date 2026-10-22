@@ -6,6 +6,7 @@ import { PaymentGatewayService } from "../payments/payment-gateway.service";
 import { CommerceRepository } from "../repositories/commerce.repository";
 import { getUploadsDirectory, localUploadsEnabled } from "../common/deployment-config";
 import { GuestCheckoutDto, ShippingDetailsDto } from "../controllers/guest-checkout.dto";
+import { shippingPolicy } from "./shipping-policy";
 
 type SessionUser = {
   sub: string;
@@ -385,8 +386,11 @@ export class CommerceService {
   }
 
   async publicShippingZones() {
-    const zones = await this.repository.listShippingZones();
-    return zones.map(({ id, code, baseRate }) => ({ id, code, baseRate: this.decimalToNumber(baseRate) }));
+    return [{ id: shippingPolicy.countryCode, code: shippingPolicy.countryCode, baseRate: shippingPolicy.ratePerOrder }];
+  }
+
+  publicShippingPolicy() {
+    return shippingPolicy;
   }
 
   async guestCheckout(input: GuestCheckoutDto) {
@@ -411,9 +415,6 @@ export class CommerceService {
         include: {
           user: true,
           addresses: {
-            include: {
-              shippingZone: true,
-            },
             where: { isDefault: true },
             take: 1,
           },
@@ -424,14 +425,8 @@ export class CommerceService {
         throw new NotFoundException("Customer not found.");
       }
 
-      const zone = shipping
-        ? await tx.shippingZone.findFirst({ where: { id: shipping.shippingZoneId, active: true } })
-        : null;
-      if (shipping && !zone) {
-        throw new BadRequestException("Select an available shipping zone.");
-      }
-      const address = shipping && zone
-        ? { phone: shipping.phone, city: shipping.city, street: shipping.street, building: null, shippingZone: zone }
+      const address = shipping
+        ? { phone: shipping.phone, city: shipping.city, street: shipping.street, building: null }
         : customer?.addresses[0];
       if (!address) {
         throw new BadRequestException("Default shipping address is required before checkout.");
@@ -505,8 +500,7 @@ export class CommerceService {
       }
 
       const subtotal = cart.items.reduce((total, item) => total + Number(item.variant.price) * item.quantity, 0);
-      const merchantCount = new Set(cart.items.map((item) => item.variant.product.merchantId)).size;
-      const shippingTotal = Number(address.shippingZone.baseRate) * Math.max(1, merchantCount);
+      const shippingTotal = shippingPolicy.ratePerOrder;
       const total = subtotal + shippingTotal;
 
       const orderNumber = `BMO-${Date.now()}`;
@@ -522,7 +516,7 @@ export class CommerceService {
           shippingPhone: address.phone,
           shippingCity: address.city,
           shippingStreet: `${address.street}${address.building ? ` ${address.building}` : ""}`.trim(),
-          shippingZoneCode: address.shippingZone.code,
+          shippingZoneCode: shippingPolicy.countryCode,
           statusHistory: {
             create: {
               status: "PENDING",

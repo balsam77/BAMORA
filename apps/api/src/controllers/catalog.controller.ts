@@ -24,6 +24,11 @@ export class CatalogController {
     return this.commerceService.publicShippingZones();
   }
 
+  @Get("shipping-policy")
+  shippingPolicy() {
+    return this.commerceService.publicShippingPolicy();
+  }
+
   @Post("checkout")
   checkout(@Body() body: GuestCheckoutDto) {
     return this.commerceService.guestCheckout(body);

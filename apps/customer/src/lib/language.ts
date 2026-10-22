@@ -11,6 +11,16 @@ export const languageNames: Record<AppLanguage, string> = {
 const rtlLanguages = new Set<AppLanguage>(["ar", "he"]);
 
 const dictionary: Record<string, { en: string; he: string }> = {
+  "التوصيل لكل مدن وبلدات إسرائيل: ₪70 مرة واحدة للطلب كاملًا، مهما تعددت المنتجات أو التجار.": {
+    en: "Delivery to every city and town in Israel: ILS 70 once for the entire order, regardless of products or merchants.",
+    he: "משלוח לכל הערים והיישובים בישראל: 70 ₪ פעם אחת להזמנה כולה, ללא תלות במספר המוצרים או הסוחרים.",
+  },
+  "جارٍ تحميل سياسة التوصيل...": { en: "Loading delivery policy...", he: "טוען את מדיניות המשלוחים..." },
+  "تعذر تحميل سياسة التوصيل.": { en: "Unable to load the delivery policy.", he: "לא ניתן לטעון את מדיניות המשלוחים." },
+  "تعذر التحقق من سياسة التوصيل. يرجى المحاولة لاحقًا.": {
+    en: "Unable to verify the delivery policy. Please try again later.",
+    he: "לא ניתן לאמת את מדיניות המשלוחים. יש לנסות שוב מאוחר יותר.",
+  },
   "اللغة": { en: "Language", he: "שפה" },
   "اختر نوع الحساب للدخول إلى منصة BAMORA": { en: "Choose account type to enter BAMORA", he: "בחר סוג חשבון כדי להיכנס ל-BAMORA" },
   "الدخول إلى تجربة العميل": { en: "Enter customer experience", he: "כניסה לחוויית הלקוח" },

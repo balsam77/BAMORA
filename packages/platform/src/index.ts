@@ -344,7 +344,7 @@ export type ShippingDetails = {
   email: string;
   city: string;
   street: string;
-  shippingZoneId: string;
+  shippingZoneId?: string;
 };
 
 export type GuestCheckoutInput = ShippingDetails & {
@@ -414,6 +414,17 @@ export async function getPublicProducts(query = ""): Promise<StorefrontProduct[]
 
 export function getPublicShippingZones() {
   return apiRequest<Array<{ id: string; code: string; baseRate: number }>>("/api/catalog/shipping-zones", {}, { skipAuth: true });
+}
+
+export type ShippingPolicy = {
+  countryCode: "IL";
+  ratePerOrder: number;
+  currency: "ILS";
+  chargeRule: "ONCE_PER_ORDER";
+};
+
+export function getPublicShippingPolicy() {
+  return apiRequest<ShippingPolicy>("/api/catalog/shipping-policy", {}, { skipAuth: true });
 }
 
 export function checkoutAsGuest(input: GuestCheckoutInput) {
