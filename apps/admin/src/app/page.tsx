@@ -139,7 +139,7 @@ function AdminPageContent() {
   const [offersHistory, setOffersHistory] = useState<GlobalOfferRecord[]>([]);
   const [stats, setStats] = useState<PlatformStats>(defaultStats);
   const [categoryForm, setCategoryForm] = useState<CategoryFormState>(emptyCategory);
-  const [platformNotice, setPlatformNotice] = useState("جاهز لإرسال إشعار جماعي للتجار أو المستخدمين.");
+  const [platformNotice, setPlatformNotice] = useState("");
   const [broadcastAudience, setBroadcastAudience] = useState<"all-users" | "customers" | "merchants">("all-users");
   const [broadcastTitle, setBroadcastTitle] = useState("إشعار عام");
   const [broadcastBody, setBroadcastBody] = useState("تم إرسال إشعار جديد من لوحة الإدارة");
@@ -173,7 +173,9 @@ function AdminPageContent() {
       window.localStorage.setItem(ADMIN_NAME_KEY, demoName);
       setRole("super-admin");
       setAdminName(demoName);
-      loadDashboard().finally(() => setReady(true));
+      loadDashboard().catch((error: unknown) => {
+        setLoginNotice(error instanceof Error ? error.message : "تعذر تحميل لوحة المسؤول.");
+      }).finally(() => setReady(true));
       return;
     }
 
@@ -183,7 +185,11 @@ function AdminPageContent() {
     setAdminName(savedName);
 
     if (savedRole === "super-admin") {
-      loadDashboard().finally(() => setReady(true));
+      loadDashboard().catch((error: unknown) => {
+        clearRoleSession();
+        setRole(null);
+        setLoginNotice(error instanceof Error ? error.message : "تعذر تحميل لوحة المسؤول. سجل الدخول مجددًا.");
+      }).finally(() => setReady(true));
       return;
     }
 
@@ -216,6 +222,8 @@ function AdminPageContent() {
       setLoginNotice("");
       await loadDashboard();
     } catch (error) {
+      clearRoleSession();
+      setRole(null);
       setLoginNotice(error instanceof Error ? error.message : "تعذر تسجيل دخول المسؤول.");
     }
   };
@@ -244,9 +252,13 @@ function AdminPageContent() {
   };
 
   const updateMerchantStatus = async (id: string, status: MerchantApprovalStatus) => {
-    await adminRepository.updateMerchantStatus(id, status);
-    await loadDashboard();
-    setPlatformNotice("تم تحديث حالة المتجر بنجاح.");
+    try {
+      await adminRepository.updateMerchantStatus(id, status);
+      await loadDashboard();
+      setPlatformNotice("تم تحديث حالة المتجر بنجاح.");
+    } catch (error) {
+      setPlatformNotice(error instanceof Error ? error.message : "تعذر تحديث حالة المتجر.");
+    }
   };
 
   const deleteMerchant = async (id: string) => {
@@ -350,17 +362,21 @@ function AdminPageContent() {
       return;
     }
 
-    await adminRepository.upsertCategory({
-      id: categoryForm.id || undefined,
-      nameAr: categoryForm.nameAr,
-      slug: categoryForm.slug,
-      icon: categoryForm.icon,
-      parentId: categoryForm.parentId || null,
-    });
+    try {
+      await adminRepository.upsertCategory({
+        id: categoryForm.id || undefined,
+        nameAr: categoryForm.nameAr,
+        slug: categoryForm.slug,
+        icon: categoryForm.icon,
+        parentId: categoryForm.parentId || null,
+      });
 
-    setCategoryForm(emptyCategory);
-    await loadDashboard();
-    setPlatformNotice("تم حفظ القسم بنجاح.");
+      setCategoryForm(emptyCategory);
+      await loadDashboard();
+      setPlatformNotice("تم حفظ القسم بنجاح.");
+    } catch (error) {
+      setPlatformNotice(error instanceof Error ? error.message : "تعذر حفظ القسم.");
+    }
   };
 
   const removeCategory = async () => {
@@ -461,6 +477,7 @@ function AdminPageContent() {
             تسجيل الخروج
           </button>
         </header>
+        {platformNotice && <p className={styles.inlineNote} role="status">{platformNotice}</p>}
 
         {activeTab === "overview" && (
           <section className={styles.grid}>
@@ -888,7 +905,6 @@ function AdminPageContent() {
                 ))}
               </article>
             </div>
-            <p className={styles.inlineNote}>{platformNotice}</p>
           </section>
         )}
 

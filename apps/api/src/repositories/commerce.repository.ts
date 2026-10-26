@@ -712,6 +712,7 @@ export class CommerceRepository {
           },
         },
         images: true,
+        categories: { include: { category: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -732,11 +733,13 @@ export class CommerceRepository {
     id?: string;
     merchantId: string;
     name: string;
+    description?: string;
     stock: number;
     price: number;
     images: string[];
     sizes: string[];
     colors: string[];
+    categoryIds?: string[];
   }) {
     const slug = input.name.toLowerCase().replace(/\s+/g, "-") + `-${Date.now()}`;
 
@@ -747,9 +750,13 @@ export class CommerceRepository {
           data: {
             titleAr: input.name,
             titleEn: input.name,
-            descriptionAr: input.name,
-            descriptionEn: input.name,
+            descriptionAr: input.description,
+            descriptionEn: input.description,
             status: "PUBLISHED",
+            categories: input.categoryIds ? {
+              deleteMany: {},
+              create: input.categoryIds.map(categoryId => ({ categoryId })),
+            } : undefined,
             images: {
               deleteMany: {},
               create: input.images.map((url, index) => ({ url, sortOrder: index })),
@@ -779,6 +786,7 @@ export class CommerceRepository {
           include: {
             variants: { include: { inventory: true } },
             images: true,
+            categories: { include: { category: true } },
           },
         });
       });
@@ -790,15 +798,16 @@ export class CommerceRepository {
         slug,
         titleAr: input.name,
         titleEn: input.name,
-        descriptionAr: input.name,
-        descriptionEn: input.name,
+        descriptionAr: input.description ?? input.name,
+        descriptionEn: input.description ?? input.name,
         status: "PUBLISHED",
+        categories: input.categoryIds ? { create: input.categoryIds.map(categoryId => ({ categoryId })) } : undefined,
         images: {
           create: input.images.map((url, index) => ({ url, sortOrder: index })),
         },
         variants: {
-          create: (input.sizes.length > 0 ? input.sizes : ["One Size"]).map((size, index) => {
-            const color = input.colors[index % Math.max(1, input.colors.length)] ?? "black";
+          create: [...new Set(input.sizes.length > 0 ? input.sizes : ["One Size"])].flatMap(size =>
+            [...new Set(input.colors.length > 0 ? input.colors : ["black"])].map(color => {
             return {
               size,
               color,
@@ -811,12 +820,13 @@ export class CommerceRepository {
                 },
               },
             };
-          }),
+          })),
         },
       },
       include: {
         variants: { include: { inventory: true } },
         images: true,
+        categories: { include: { category: true } },
       },
     });
   }

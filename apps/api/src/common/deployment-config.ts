@@ -2,12 +2,36 @@ import { isAbsolute, resolve } from "path";
 
 type Environment = Record<string, string | undefined>;
 
-export function localUploadsEnabled(env: Environment = process.env) {
+export function uploadStorageMode(env: Environment = process.env) {
   const storage = env.UPLOAD_STORAGE ?? (env.NODE_ENV === "production" ? "disabled" : "local");
-  if (storage !== "disabled" && storage !== "local") {
-    throw new Error("UPLOAD_STORAGE must be disabled or local.");
+  if (storage !== "disabled" && storage !== "local" && storage !== "supabase") {
+    throw new Error("UPLOAD_STORAGE must be disabled, local or supabase.");
   }
-  return storage === "local";
+  return storage;
+}
+
+export function localUploadsEnabled(env: Environment = process.env) {
+  return uploadStorageMode(env) === "local";
+}
+
+export function supabaseStorageConfig(env: Environment = process.env) {
+  const url = env.SUPABASE_URL?.trim();
+  const bucket = env.SUPABASE_STORAGE_BUCKET?.trim();
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !bucket || !key) {
+    throw new Error("Supabase image storage requires server-only SUPABASE_URL, SUPABASE_STORAGE_BUCKET and SUPABASE_SERVICE_ROLE_KEY.");
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("SUPABASE_URL must be an HTTPS Supabase project origin.");
+  }
+  if (parsed.protocol !== "https:" || !/^[a-z0-9]+\.supabase\.co$/.test(parsed.hostname) ||
+      parsed.origin !== url || parsed.username || parsed.password || !/^[a-z0-9][a-z0-9-]{1,62}$/.test(bucket)) {
+    throw new Error("Supabase storage requires a project HTTPS origin and a valid bucket name.");
+  }
+  return { url, bucket, key };
 }
 
 export function getUploadsDirectory(env: Environment = process.env) {

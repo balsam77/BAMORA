@@ -10,6 +10,7 @@ const { HealthController } = require("../dist/controllers/health.controller");
 const { AuthService } = require("../dist/auth/auth.service");
 
 test("production merchant login cannot provision or activate accounts", async () => {
+  const bcrypt = require("bcrypt");
   const previous = process.env.NODE_ENV;
   process.env.NODE_ENV = "production";
   const unexpected = () => { throw new Error("Unexpected account mutation"); };
@@ -20,12 +21,12 @@ test("production merchant login cannot provision or activate accounts", async ()
     revokeAllRefreshTokensForUser: unexpected,
   };
   const service = new AuthService({}, repository);
-  const dto = { email: "merchant@example.com", loginCode: "0501234567", password: "4567" };
+  const dto = { email: "merchant@example.com", password: "test-merchant-password" };
   try {
     await assert.rejects(() => service.merchantLogin(dto), /Invalid credentials/);
     repository.findUserByEmail = async () => ({
       id: "test", email: dto.email, role: "MERCHANT", status: "ACTIVE",
-      phone: dto.loginCode, merchant: { status: "PENDING" },
+      passwordHash: await bcrypt.hash(dto.password, 4), merchant: { status: "PENDING" },
     });
     await assert.rejects(() => service.merchantLogin(dto), /pending admin approval/);
   } finally {
@@ -193,7 +194,7 @@ test("HTTP uploads use configured storage, survive app restart and obey exact CO
     assert.equal(unauthorized.status, 403);
     const token = app.get(JwtService).sign({ sub: "test-merchant", email: "merchant@example.com", role: "merchant" });
     const form = new FormData();
-    const bytes = Buffer.from("test-only-image");
+    const bytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aS2kAAAAASUVORK5CYII=", "base64");
     form.append("file", new Blob([bytes], { type: "image/png" }), "test.png");
     const upload = await fetch(`${base}/api/uploads/images`, {
       method: "POST", body: form, headers: {

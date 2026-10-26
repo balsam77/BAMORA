@@ -4,7 +4,8 @@ import { Prisma } from "@prisma/client";
 import { basename, join } from "path";
 import { PaymentGatewayService } from "../payments/payment-gateway.service";
 import { CommerceRepository } from "../repositories/commerce.repository";
-import { getUploadsDirectory, localUploadsEnabled } from "../common/deployment-config";
+import { getUploadsDirectory, localUploadsEnabled, uploadStorageMode } from "../common/deployment-config";
+import { supabaseImageObjectPath } from "./image-storage";
 import { GuestCheckoutDto, ShippingDetailsDto } from "../controllers/guest-checkout.dto";
 import { shippingPolicy } from "./shipping-policy";
 
@@ -52,7 +53,9 @@ export class CommerceService {
       throw new BadRequestException("At least one product image is required.");
     }
 
-    const hasInvalidImage = sanitized.some((url) => this.extractLocalUploadFileName(url) == null);
+    const hasInvalidImage = sanitized.some((url) =>
+      this.extractLocalUploadFileName(url) == null &&
+      !(uploadStorageMode() === "supabase" && supabaseImageObjectPath(url)));
     if (hasInvalidImage) {
       throw new BadRequestException("Product image must be uploaded through /api/uploads/images.");
     }
@@ -1038,17 +1041,36 @@ export class CommerceService {
   }
 
   async merchantUpsertProduct(
-    input: { id?: string; name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
+    input: { id?: string; name: string; description?: string; category: string; subCategory?: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
     user?: SessionUser,
   ) {
     const merchantId = await this.resolveMerchantId(user);
     const images = this.requireAtLeastOneImage(input.images);
+    const categories = await this.repository.listCategories();
+    const category = categories.find(item => item.nameAr === input.category && item.parentId === null);
+    const subCategory = input.subCategory
+      ? categories.find(item => item.nameAr === input.subCategory && item.parentId === category?.id)
+      : null;
+    if (!category || (input.subCategory && !subCategory)) {
+      throw new BadRequestException("Select an existing category and a matching subcategory.");
+    }
+    const categoryIds = subCategory ? [category.id, subCategory.id] : [category.id];
     let staleImages: string[] = [];
 
     if (input.id) {
       const existing = await this.repository.findProductById(input.id);
       if (!existing || existing.merchantId !== merchantId) {
         throw new NotFoundException("Product not found.");
+      }
+      const sizes = new Set(input.sizes.length ? input.sizes : ["One Size"]);
+      const colors = new Set(input.colors.length ? input.colors : ["black"]);
+      if (new Set(existing.variants.map(variant => variant.size)).size !== sizes.size ||
+          new Set(existing.variants.map(variant => variant.color)).size !== colors.size ||
+          existing.variants.some(variant => !sizes.has(variant.size) || !colors.has(variant.color))) {
+        throw new BadRequestException("Existing product options cannot be replaced. Create a new product for different sizes or colors.");
+      }
+      if (existing.variants.some(variant => (variant.inventory?.reserved ?? 0) > input.stock)) {
+        throw new BadRequestException("Stock cannot be less than the quantity already reserved.");
       }
 
       staleImages = existing.images.map((image) => image.url).filter((url) => !images.includes(url));
@@ -1058,11 +1080,13 @@ export class CommerceService {
       id: input.id,
       merchantId,
       name: input.name,
+      description: input.description,
       stock: input.stock,
       price: Number(input.price),
       images,
       sizes: input.sizes,
       colors: input.colors,
+      categoryIds,
     });
 
     if (staleImages.length > 0) {

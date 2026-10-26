@@ -192,6 +192,38 @@ Production uploads need separately approved durable object storage or a paid dis
 Do not use an ephemeral directory as a substitute. Local development defaults to
 the existing local-disk behavior.
 
+#### Supabase Storage (approved backend; activation is manual)
+
+The API supports `UPLOAD_STORAGE=supabase` without changing Prisma or
+`DATABASE_URL`. The project owner must create a **public** product-image bucket
+in the intended Supabase project. Only non-private catalog photographs belong
+there. Do not add anonymous upload/update/delete policies. Set a 5 MB object
+limit and allow `image/png`, `image/jpeg`, and `image/webp`.
+
+Configure these values only in Render's server environment:
+
+- `SUPABASE_URL`: the intended project's HTTPS origin.
+- `SUPABASE_STORAGE_BUCKET`: the bucket name, for example `product-images`.
+- `SUPABASE_SERVICE_ROLE_KEY`: a server-only key, never a `NEXT_PUBLIC_*`
+  variable, repository file, screenshot, or chat message.
+- `UPLOAD_STORAGE=supabase`.
+
+This does not create the bucket, alter database records, or enable payments.
+Missing configuration fails startup. Existing merchant/admin role checks run
+before multipart parsing. Uploads are limited to 5 MB, use generated object
+names, verify PNG/JPEG/WebP signatures, never overwrite an object, and return
+only a public image URL. Provider failures produce a 503; raw provider responses
+and credentials are not exposed.
+
+After deploying the API, use an approved merchant/admin account to upload an
+actual product image. Confirm public image retrieval and persistence after a
+redeploy before inviting a merchant. Storage access and durability cannot be
+certified by a mocked test or API health alone.
+
+Removing/replacing a product does not automatically delete Supabase objects:
+image URLs may still be referenced by order snapshots or another product.
+Review unreferenced objects separately before any manual cleanup.
+
 With `UPLOAD_STORAGE=local`, startup creates the configured directory if needed and verifies write access. Upload
 storage, static `/uploads/` serving and product-file cleanup share the same directory.
 The mount must be a persistent disk, not merely a directory on an ephemeral filesystem.
@@ -272,9 +304,63 @@ administrator password remains. Do not set these on production services.
 Protected API routes verify the signed token against the current database account
 role, status and required profile on every request. A stale token cannot preserve
 administrator/merchant permissions after the database role changes. Browser role
-flags and headers do not grant server permissions. The existing phone-derived
-merchant credential still requires a separately approved stronger authentication
-factor before public merchant sign-in can be considered safe.
+flags and headers do not grant server permissions. Merchant registration now requires a chosen password of 12–64 characters, at most
+72 UTF-8 bytes. Login verifies the existing bcrypt hash, never a phone-derived
+code, and never provisions/activates accounts. A new application remains pending
+until approved by an administrator. Legacy short-code accounts need a separately
+authorized password-setting process; this release does not reset any production
+passwords or claim that email password recovery is operational.
+
+### Business web onboarding
+
+Deploy `apps/business` as its own Vercel project, not over Customer. It includes
+the existing dashboards at `/admin` and `/merchant` as well as the combined role
+selector at `/`. Add its exact public HTTPS origin to the existing Render
+`CORS_ORIGINS` list without removing Customer or other approved origins.
+
+The first administrator must already exist with a working, stored bcrypt
+credential and administrator profile. No seed, default password or automatic
+production administrator is supplied. Confirm this account interactively; do
+not send credentials in chat.
+
+Operational acceptance:
+
+1. Sign in as the administrator and add approved real parent/subcategories.
+2. A real merchant applies at `/merchant` with their chosen password.
+3. The administrator approves that application. The merchant signs in.
+4. Upload real images, select existing categories, and save the product with
+   description, price and stock per size/color option.
+5. Verify the same product and category in the public Customer catalog.
+
+Creation generates every selected size/color combination. The stock field is per
+option, not divided across options. Existing option identities are not replaced
+on edit because orders/carts may reference them; create a new product for changed
+options. Updating a product may change its description, category links, images,
+price and per-option stock, but cannot lower stock below reserved quantities.
+These operations require explicit user actions; deployment creates no products.
+
+### Delivery staff design (not implemented or production-approved)
+
+The local delivery workspace is not a public staff-authentication system. Keep
+production staff login blocked. The administrator may inspect orders using their
+own authorized dashboard; never share that session with delivery staff.
+
+Proposed next phase, requiring separate schema/migration approval:
+
+- Dedicated delivery staff identity/profile, hashed passwords, active/suspended
+  status and a restricted delivery role, not administrator impersonation.
+- Persistent shipment assignment linking an existing merchant sub-order/shipment
+  to a staff account, with timestamps and an audit history.
+- Server-authorized routes expose only assigned shipments and the minimum
+  delivery contact/address details. No catalog, merchant approval, financial or
+  customer-account administration permissions.
+- Server validates status transitions and assignment on every update; browser
+  storage is never an authority. Disabling staff revokes their access immediately.
+- Data retention and public account recovery must be defined before launch.
+
+No delivery schema, migration, account or production data is changed by the
+current web-onboarding work. Approve and test that separate phase before giving
+delivery staff a public login.
 
 ## Payment-provider review and public link
 

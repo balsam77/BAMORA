@@ -99,3 +99,48 @@ test("public delivery policy is requested without authentication", async () => {
   assert.ok(calls[0].url.endsWith("/api/catalog/shipping-policy"));
   assert.equal(calls[0].options.headers.has("authorization"), false);
 });
+
+test("merchant dashboard preserves categories and description and accepts guest orders", async () => {
+  const { api } = platformFixture(() => ({
+    merchantId: "merchant-1",
+    products: [{
+      id: "product-1", titleAr: "Shirt", descriptionAr: "Cotton shirt",
+      categories: [
+        { category: { nameAr: "Clothes", parentId: null } },
+        { category: { nameAr: "Shirts", parentId: "root" } },
+      ],
+      variants: [
+        { price: 25, size: "M", color: "Black", inventory: { quantity: 3 } },
+        { price: 25, size: "L", color: "Black", inventory: { quantity: 3 } },
+      ],
+      images: [],
+    }],
+    orders: [{
+      id: "sub-order-1", status: "PENDING", subtotal: 25,
+      createdAt: "2026-10-22T10:00:00Z",
+      order: { orderNumber: "BMO-test", customer: null, shippingName: "Guest recipient" },
+    }],
+  }));
+  const dashboard = await api.createMerchantRepository("api").getDashboard();
+  assert.equal(dashboard.products[0].category, "Clothes");
+  assert.equal(dashboard.products[0].subCategory, "Shirts");
+  assert.equal(dashboard.products[0].description, "Cotton shirt");
+  assert.equal(dashboard.products[0].quantity, 3);
+  assert.equal(dashboard.orders[0].customer, "Guest recipient");
+});
+
+test("merchant product requests retain category and description fields", async () => {
+  const { api, calls } = platformFixture(() => ({
+    id: "product-1", titleAr: "Shirt", variants: [], images: [],
+  }));
+  const input = {
+    name: "Shirt", description: "Cotton", category: "Clothes", subCategory: "Shirts",
+    price: "25", quantity: 3, sizes: ["M"], colors: ["Black"], images: ["/uploads/test.png"],
+  };
+  await api.createMerchantRepository("api").addProduct(input);
+  const body = JSON.parse(calls[0].options.body);
+  assert.equal(body.category, input.category);
+  assert.equal(body.subCategory, input.subCategory);
+  assert.equal(body.description, input.description);
+  assert.equal(body.stock, 3);
+});

@@ -33,6 +33,10 @@ export class LoginDto {
 
 export class MerchantRegistrationDto {
   @IsString()
+  @Length(12, 64)
+  password!: string;
+
+  @IsString()
   @Length(2, 120)
   businessName!: string;
 
@@ -53,12 +57,13 @@ export class MerchantLoginDto {
   email!: string;
 
   @IsString()
-  @Matches(/^\d{4}$/)
+  @Length(12, 64)
   password!: string;
 
+  @IsOptional()
   @IsString()
   @Length(7, 32)
-  loginCode!: string;
+  loginCode?: string;
 }
 
 export class AdminLoginDto {

@@ -7,10 +7,9 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage } from "multer";
-import { extname } from "path";
+import { memoryStorage } from "multer";
 import { Roles } from "../common/roles.decorator";
-import { getUploadsDirectory } from "../common/deployment-config";
+import { storeProductImage } from "../services/image-storage";
 import { UploadStorageGuard } from "../common/upload-storage.guard";
 
 @Roles("merchant", "super-admin")
@@ -20,30 +19,23 @@ export class UploadsController {
   @Post("images")
   @UseInterceptors(
     FileInterceptor("file", {
-      storage: diskStorage({
-        destination: (_request, _file, callback) => callback(null, getUploadsDirectory()),
-        filename: (_request, file, callback) => {
-          const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
-          callback(null, uniqueName);
-        },
-      }),
+      storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024,
       },
     }),
   )
-  uploadImage(@UploadedFile() file?: Express.Multer.File) {
+  async uploadImage(@UploadedFile() file?: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException("File is required.");
     }
 
+    const stored = await storeProductImage(file);
     return {
-      id: `img-${Date.now()}`,
-      filename: file.filename,
+      id: stored.filename,
+      ...stored,
       mimeType: file.mimetype,
-      url: `/uploads/${file.filename}`,
       size: file.size,
-      provider: "local-disk",
     };
   }
 }

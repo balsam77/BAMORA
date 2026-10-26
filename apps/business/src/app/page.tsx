@@ -201,8 +201,8 @@ const copy = {
     invalidFlowAction: "الحالة الحالية لا تسمح بهذه العملية.",
     adminWorkspace: "لوحة الإدارة",
     merchantPhoneHint: "أدخل رقم هاتف التاجر",
-    merchantPasswordHint: "آخر 4 أرقام من رقم الهاتف",
-    wrongMerchantCredentials: "رقم الهاتف أو آخر 4 أرقام غير صحيحة.",
+    merchantPasswordHint: "كلمة مرور التاجر (12 حرفًا على الأقل)",
+    wrongMerchantCredentials: "أدخل البريد الإلكتروني وكلمة مرور التاجر.",
   },
   en: {
     appTitle: "BAMORA Business",
@@ -291,8 +291,8 @@ const copy = {
     invalidFlowAction: "Current status does not allow this action.",
     adminWorkspace: "Admin dashboard",
     merchantPhoneHint: "Enter merchant phone number",
-    merchantPasswordHint: "Last 4 digits of phone",
-    wrongMerchantCredentials: "Phone or last 4 digits are not valid.",
+    merchantPasswordHint: "Merchant password (at least 12 characters)",
+    wrongMerchantCredentials: "Enter the merchant email and password.",
   },
 } as const;
 
@@ -1426,10 +1426,7 @@ export default function BusinessPage() {
 
     try {
       const merchantEmail = normalizedUsername.toLowerCase();
-      const merchantPhone = normalizePhone(merchantCode.trim());
-      const merchantLoginCode = normalizedPassword;
-
-      if (!merchantEmail || !merchantPhone || merchantLoginCode !== merchantPhone.slice(-4)) {
+      if (!merchantEmail || password.length < 12) {
         setNotice(text.wrongMerchantCredentials);
         return;
       }
@@ -1439,8 +1436,7 @@ export default function BusinessPage() {
 
       const session = await merchantRepository.login({
         email: merchantEmail,
-        password: merchantLoginCode,
-        loginCode: merchantPhone,
+        password,
       });
       setCurrentRole("merchant");
       if (canUseStorage()) {
@@ -1486,14 +1482,6 @@ export default function BusinessPage() {
                 onChange={(event) => setUsername(event.target.value)}
                 placeholder={accountType === "merchant" || accountType === "super-admin" ? text.email : text.username}
               />
-              {accountType === "merchant" ? (
-                <input
-                  className={styles.inputField}
-                  value={merchantCode}
-                  onChange={(event) => setMerchantCode(event.target.value)}
-                  placeholder={text.merchantPhoneHint}
-                />
-              ) : null}
               <input
                 className={styles.inputField}
                 type="password"
@@ -1519,6 +1507,7 @@ export default function BusinessPage() {
               </button>
             </div>
             {notice ? <p className={styles.inlineNote}>{notice}</p> : null}
+            {accountType === "merchant" ? <a href="/merchant">{language === "ar" ? "تقديم طلب انضمام تاجر جديد" : "Apply as a new merchant"}</a> : null}
           </section>
         </div>
       </div>
@@ -1567,7 +1556,14 @@ export default function BusinessPage() {
             <button type="button" className={styles.secondaryButton} onClick={() => setWorkspace("admin")}>{text.adminWorkspace}</button>
             <button type="button" className={styles.secondaryButton} onClick={handleLogout}>{text.logout}</button>
           </div>
-          <DeliveryWorkspace language={language} isAdminView={true} onLogout={handleLogout} />
+          {process.env.NODE_ENV === "production" ? (
+            <section className={styles.loginCard}>
+              <h1>{text.deliveryTitle}</h1>
+              <p role="status">{language === "ar"
+                ? "إدارة موظفي التوصيل والتعيين المحلي غير متاحة على الإنتاج. يلزم تنفيذ صلاحيات خادمية وسجل تعيينات دائم قبل التشغيل. راجع الطلبات من لوحة المسؤول."
+                : "Local staff management and delivery assignments are unavailable in production. Server-authorized staff access and persistent assignments are required. Review orders in the admin dashboard."}</p>
+            </section>
+          ) : <DeliveryWorkspace language={language} isAdminView={true} onLogout={handleLogout} />}
         </div>
       );
     }

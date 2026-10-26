@@ -15,12 +15,13 @@ export type MerchantRegistrationPayload = {
   email: string;
   phone: string;
   nationalId: string;
+  password: string;
 };
 
 export type MerchantLoginPayload = {
   email: string;
   password: string;
-  loginCode: string;
+  loginCode?: string;
 };
 
 export type AdminLoginPayload = {
@@ -54,6 +55,7 @@ export type MerchantPlanRecord = {
 export type MerchantProduct = {
   id: string;
   name: string;
+  description?: string;
   category: string;
   subCategory: string;
   price: string;
@@ -410,6 +412,12 @@ export async function getPublicProducts(query = ""): Promise<StorefrontProduct[]
     sizes: product.sizes,
     colors: product.colors,
   }));
+}
+
+export type CatalogCategory = { id: string; titleAr: string; parentId: string | null };
+
+export function getPublicCategories() {
+  return apiRequest<CatalogCategory[]>("/api/catalog/categories", {}, { skipAuth: true });
 }
 
 export function getPublicShippingZones() {
@@ -1595,16 +1603,19 @@ function createApiMerchantRepository(): MerchantRepository {
   const mapMerchantProduct = (product: {
     id: string;
     titleAr: string;
+    descriptionAr?: string;
     variants: Array<{ price: string | number; size: string; color: string; inventory?: { quantity: number } | null }>;
     images: Array<{ url: string }>;
+    categories?: Array<{ category: { nameAr: string; parentId: string | null } }>;
   }): MerchantProduct => {
     const lead = product.variants[0];
-    const quantity = product.variants.reduce((sum, variant) => sum + (variant.inventory?.quantity ?? 0), 0);
+    const quantity = lead?.inventory?.quantity ?? 0;
     return {
       id: product.id,
       name: product.titleAr,
-      category: "عام",
-      subCategory: "-",
+      description: product.descriptionAr ?? "",
+      category: product.categories?.find(entry => entry.category.parentId === null)?.category.nameAr ?? "",
+      subCategory: product.categories?.find(entry => entry.category.parentId !== null)?.category.nameAr ?? "",
       price: formatIls(lead?.price ?? 0),
       quantity,
       sizes: Array.from(new Set(product.variants.map((variant) => variant.size))),
@@ -1620,7 +1631,7 @@ function createApiMerchantRepository(): MerchantRepository {
     createdAt: string;
     attentionState?: string;
     bamoraCharge?: { bamoraFee?: string | number; paymentStatus?: string } | null;
-    order: { orderNumber: string; customer: { user: { email: string } } };
+    order: { orderNumber: string; shippingName?: string; customer: { user: { email: string } } | null };
     items?: Array<{
       quantity: number;
       orderItem: {
@@ -1635,7 +1646,7 @@ function createApiMerchantRepository(): MerchantRepository {
     }>;
   }): MerchantOrder => ({
     id: subOrder.order.orderNumber || subOrder.id,
-    customer: subOrder.order.customer.user.email,
+    customer: subOrder.order.customer?.user.email ?? subOrder.order.shippingName ?? "-",
     status: normalizeOrderStatus(subOrder.status),
     total: formatIls(subOrder.subtotal),
     createdAt: new Date(subOrder.createdAt).toLocaleDateString("ar-EG"),
@@ -1736,7 +1747,7 @@ function createApiMerchantRepository(): MerchantRepository {
           createdAt: string;
           attentionState?: string;
           bamoraCharge?: { bamoraFee?: string | number; paymentStatus?: string } | null;
-          order: { orderNumber: string; customer: { user: { email: string } } };
+          order: { orderNumber: string; shippingName?: string; customer: { user: { email: string } } | null };
           items?: Array<{
             quantity: number;
             orderItem: {
@@ -1857,6 +1868,9 @@ function createApiMerchantRepository(): MerchantRepository {
           method: "POST",
           body: JSON.stringify({
             name: input.name,
+            description: input.description,
+            category: input.category,
+            subCategory: input.subCategory,
             stock: input.quantity,
             price: String(parseCurrencyNumber(input.price)),
             images: input.images,
@@ -1880,6 +1894,9 @@ function createApiMerchantRepository(): MerchantRepository {
           method: "PATCH",
           body: JSON.stringify({
             name: input.name,
+            description: input.description,
+            category: input.category,
+            subCategory: input.subCategory,
             stock: input.quantity,
             price: String(parseCurrencyNumber(input.price)),
             images: input.images,

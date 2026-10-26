@@ -34,14 +34,6 @@ export class AuthService {
     return value.slice(-3);
   }
 
-  private lastFourDigits(value: string) {
-    return value.slice(-4);
-  }
-
-  private normalizePhone(value: string) {
-    return value.replace(/[^\d]/g, "");
-  }
-
   private roleToDb(role: "customer" | "merchant" | "super-admin") {
     if (role === "merchant") {
       return "MERCHANT" as const;
@@ -166,7 +158,8 @@ export class AuthService {
   }
 
   async registerMerchantApplication(dto: MerchantRegistrationDto) {
-    const email = dto.email.toLowerCase();
+    this.assertMerchantPassword(dto.password);
+    const email = dto.email.toLowerCase().trim();
     const nationalIdHash = this.hashValue(dto.nationalId);
 
     const [existingByEmail, existingByNationalId] = await Promise.all([
@@ -178,16 +171,16 @@ export class AuthService {
       throw new BadRequestException("A merchant account with these credentials already exists.");
     }
 
-    const passwordHash = await bcrypt.hash(this.lastThreeDigits(dto.nationalId), 12);
-   const created = await this.authRepository.createUser({
-  email,
-  phone: dto.phone,
-  passwordHash,
-  role: "MERCHANT",
-  businessName: dto.businessName,
-  nationalIdHash,
-  nationalIdLast3: this.lastThreeDigits(dto.nationalId),
-});
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const created = await this.authRepository.createUser({
+      email,
+      phone: dto.phone,
+      passwordHash,
+      role: "MERCHANT",
+      businessName: dto.businessName,
+      nationalIdHash,
+      nationalIdLast3: this.lastThreeDigits(dto.nationalId),
+    });
 
     return {
       merchantId: created.merchant?.id,
@@ -218,51 +211,25 @@ export class AuthService {
     return this.createSessionTokens(user, userAgent, ipAddress);
   }
 
+  private assertMerchantPassword(password: string) {
+    if (typeof password !== "string" || password.length < 12 || password.length > 64 ||
+        Buffer.byteLength(password, "utf8") > 72 || !/\S/.test(password)) {
+      throw new BadRequestException("Merchant password must contain 12 to 64 characters and at most 72 UTF-8 bytes.");
+    }
+  }
+
   async merchantLogin(dto: MerchantLoginDto, userAgent?: string, ipAddress?: string) {
+    this.assertMerchantPassword(dto.password);
     const email = dto.email.toLowerCase().trim();
-    const providedPhone = this.normalizePhone(dto.loginCode);
-    const providedCode = dto.password.trim();
-
-    if (!providedPhone || providedCode !== this.lastFourDigits(providedPhone)) {
-      throw new UnauthorizedException("Invalid credentials.");
-    }
-
-    let user = await this.authRepository.findUserByEmail(email);
-
-    if (!user && process.env.NODE_ENV === "production") {
-      throw new UnauthorizedException("Invalid credentials.");
-    }
-
-    if (!user) {
-      const created = await this.authRepository.createUser({
-        email,
-        phone: providedPhone,
-        passwordHash: await bcrypt.hash(providedCode, 12),
-        role: "MERCHANT",
-        businessName: email.split("@")[0] || "BAMORA Merchant",
-      });
-
-      await this.authRepository.activateMerchantByUserId(created.id);
-      user = await this.authRepository.findUserById(created.id);
-    }
-
-    if (!user) {
+    const user = await this.authRepository.findUserByEmail(email);
+    if (!user?.passwordHash) {
       throw new UnauthorizedException("Invalid credentials.");
     }
 
     this.assertRole(user.role, "MERCHANT");
 
-    const storedPhone = this.normalizePhone(user.phone ?? "");
-    if (!storedPhone || storedPhone !== providedPhone || providedCode !== this.lastFourDigits(storedPhone)) {
+    if (!await bcrypt.compare(dto.password, user.passwordHash)) {
       throw new UnauthorizedException("Invalid credentials.");
-    }
-
-    if (user.merchant?.status === "PENDING" && process.env.NODE_ENV !== "production") {
-      await this.authRepository.activateMerchantByUserId(user.id);
-      user = await this.authRepository.findUserById(user.id);
-      if (!user) {
-        throw new UnauthorizedException("Invalid credentials.");
-      }
     }
 
     this.assertLoginAllowed(user);

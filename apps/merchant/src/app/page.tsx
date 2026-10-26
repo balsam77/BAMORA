@@ -6,6 +6,8 @@ import {
   clearRoleSession,
   createMerchantRepository,
   getCurrentRole,
+  getPublicCategories,
+  type CatalogCategory,
   type AppRole,
   MERCHANT_NAME_KEY,
   parseCsvField,
@@ -25,6 +27,7 @@ type MerchantTab = "overview" | "catalog" | "orders" | "promotions" | "notificat
 
 type ProductFormState = {
   name: string;
+  description: string;
   category: string;
   subCategory: string;
   price: string;
@@ -61,6 +64,7 @@ const defaultStats: MerchantStats = {
 
 const emptyForm: ProductFormState = {
   name: "",
+  description: "",
   category: "",
   subCategory: "",
   price: "",
@@ -75,6 +79,7 @@ const merchantRepository = createMerchantRepository("api");
 function toProductInput(form: ProductFormState): MerchantProductInput {
   return {
     name: form.name.trim(),
+    description: form.description.trim(),
     category: form.category.trim(),
     subCategory: form.subCategory.trim(),
     price: form.price.trim(),
@@ -88,6 +93,7 @@ function toProductInput(form: ProductFormState): MerchantProductInput {
 function toForm(product: MerchantProduct): ProductFormState {
   return {
     name: product.name,
+    description: product.description ?? "",
     category: product.category,
     subCategory: product.subCategory,
     price: product.price,
@@ -106,10 +112,15 @@ function MerchantPageContent() {
   const [merchantPhone, setMerchantPhone] = useState("");
   const [merchantPassword, setMerchantPassword] = useState("");
   const [merchantName, setMerchantName] = useState("");
+  const [registering, setRegistering] = useState(false);
+  const [businessName, setBusinessName] = useState("");
+  const [nationalId, setNationalId] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
   const [loginNotice, setLoginNotice] = useState("");
   const [activeTab, setActiveTab] = useState<MerchantTab>("overview");
   const [orderFilter, setOrderFilter] = useState<MerchantOrderStatus | "all">("all");
   const [products, setProducts] = useState<MerchantProduct[]>([]);
+  const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
   const [notifications, setNotifications] = useState<Array<{ id: string; title: string; detail: string }>>([]);
   const [stats, setStats] = useState<MerchantStats>(defaultStats);
@@ -119,7 +130,10 @@ function MerchantPageContent() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const loadDashboard = async () => {
-    const data = await merchantRepository.getDashboard();
+    const [data, catalogCategories] = await Promise.all([
+      merchantRepository.getDashboard(), getPublicCategories(),
+    ]);
+    setCategories(catalogCategories);
     setProducts(data.products);
     setOrders(data.orders);
     setNotifications(data.notifications);
@@ -134,7 +148,9 @@ function MerchantPageContent() {
       window.localStorage.setItem(MERCHANT_NAME_KEY, demoName);
       setRole("merchant");
       setMerchantName(demoName);
-      loadDashboard().finally(() => setReady(true));
+      loadDashboard().catch((error: unknown) => {
+        setLoginNotice(error instanceof Error ? error.message : "تعذر تحميل لوحة التاجر.");
+      }).finally(() => setReady(true));
       return;
     }
 
@@ -145,7 +161,11 @@ function MerchantPageContent() {
     setMerchantName(savedName);
 
     if (savedRole === "merchant") {
-      loadDashboard().finally(() => setReady(true));
+      loadDashboard().catch((error: unknown) => {
+        clearRoleSession();
+        setRole(null);
+        setLoginNotice(error instanceof Error ? error.message : "تعذر تحميل لوحة التاجر. سجل الدخول مجددًا.");
+      }).finally(() => setReady(true));
       return;
     }
 
@@ -163,18 +183,33 @@ function MerchantPageContent() {
   const loginAsMerchant = async () => {
     const email = merchantEmail.trim().toLowerCase();
     const phone = merchantPhone.replace(/[^\d]/g, "");
-    const password = merchantPassword.trim();
+    const password = merchantPassword;
 
-    if (!email || !phone || !password) {
-      setLoginNotice("أكمل البريد الإلكتروني، رقم الهاتف، وكلمة المرور.");
+    if (!email || password.length < 12 || password.length > 64 ||
+        new TextEncoder().encode(password).length > 72) {
+      setLoginNotice("أدخل بريدًا إلكترونيًا وكلمة مرور من 12 إلى 64 حرفًا (72 بايت كحد أقصى).");
       return;
     }
 
+    setAuthBusy(true);
     try {
+      if (registering) {
+        if (!businessName.trim() || !phone || !/^\d{6,20}$/.test(nationalId)) {
+          setLoginNotice("أكمل اسم المتجر والهاتف ورقم الهوية الصحيح.");
+          return;
+        }
+        await merchantRepository.registerApplication({
+          businessName: businessName.trim(), email, phone, nationalId, password,
+        });
+        setMerchantPassword("");
+        setNationalId("");
+        setRegistering(false);
+        setLoginNotice("تم إرسال طلب الانضمام. انتظر موافقة المسؤول ثم ادخل بكلمة المرور التي اخترتها.");
+        return;
+      }
       const session = await merchantRepository.login({
         email,
         password,
-        loginCode: phone,
       });
 
       setCurrentRole("merchant");
@@ -185,7 +220,11 @@ function MerchantPageContent() {
       setLoginNotice("");
       await loadDashboard();
     } catch (error) {
+      clearRoleSession();
+      setRole(null);
       setLoginNotice(error instanceof Error ? error.message : "تعذر تسجيل دخول التاجر.");
+    } finally {
+      setAuthBusy(false);
     }
   };
 
@@ -219,11 +258,15 @@ function MerchantPageContent() {
       return;
     }
 
-    await merchantRepository.addProduct(payload);
-    setCatalogForm(emptyForm);
-    setEditingProductId(null);
-    setProductNotice("تم حفظ المنتج بنجاح.");
-    await loadDashboard();
+    try {
+      await merchantRepository.addProduct(payload);
+      setCatalogForm(emptyForm);
+      setEditingProductId(null);
+      setProductNotice("تم حفظ المنتج بنجاح.");
+      await loadDashboard();
+    } catch (error) {
+      setProductNotice(error instanceof Error ? error.message : "تعذر حفظ المنتج.");
+    }
   };
 
   const handleUpdateProduct = async () => {
@@ -237,14 +280,18 @@ function MerchantPageContent() {
       setProductNotice("صورة المنتج مطلوبة. لا يمكن حفظ التعديل بدون صورة.");
       return;
     }
-    const updated = await merchantRepository.updateProduct(editingProductId, payload);
-    if (!updated) {
-      setProductNotice("تعذر العثور على المنتج المطلوب تحديثه.");
-      return;
-    }
+    try {
+      const updated = await merchantRepository.updateProduct(editingProductId, payload);
+      if (!updated) {
+        setProductNotice("تعذر العثور على المنتج المطلوب تحديثه.");
+        return;
+      }
 
-    setProductNotice("تم تحديث بيانات المنتج.");
-    await loadDashboard();
+      setProductNotice("تم تحديث بيانات المنتج.");
+      await loadDashboard();
+    } catch (error) {
+      setProductNotice(error instanceof Error ? error.message : "تعذر تحديث المنتج.");
+    }
   };
 
   const handleDeleteProduct = async (id?: string) => {
@@ -254,14 +301,18 @@ function MerchantPageContent() {
       return;
     }
 
-    await merchantRepository.deleteProduct(targetId);
-    if (editingProductId === targetId) {
-      setEditingProductId(null);
-      setCatalogForm(emptyForm);
-    }
+    try {
+      await merchantRepository.deleteProduct(targetId);
+      if (editingProductId === targetId) {
+        setEditingProductId(null);
+        setCatalogForm(emptyForm);
+      }
 
-    setProductNotice("تم حذف المنتج.");
-    await loadDashboard();
+      setProductNotice("تم حذف المنتج.");
+      await loadDashboard();
+    } catch (error) {
+      setProductNotice(error instanceof Error ? error.message : "تعذر حذف المنتج.");
+    }
   };
 
   const handleEditProduct = (product: MerchantProduct) => {
@@ -322,8 +373,12 @@ function MerchantPageContent() {
       <div className={styles.loginShell}>
         <section className={styles.loginCard}>
           <p className={styles.brand}>BAMORA</p>
-          <h1>بوابة التاجر</h1>
+          <h1>{registering ? "طلب انضمام تاجر" : "بوابة التاجر"}</h1>
           <p>أدخل بيانات التاجر للدخول إلى لوحة التحكم.</p>
+          {registering && <>
+            <input className={styles.inputField} placeholder="اسم المتجر" value={businessName} onChange={(event) => setBusinessName(event.target.value)} />
+            <input className={styles.inputField} placeholder="رقم الهوية" value={nationalId} onChange={(event) => setNationalId(event.target.value)} />
+          </>}
           <input
             type="email"
             className={styles.inputField}
@@ -331,22 +386,26 @@ function MerchantPageContent() {
             value={merchantEmail}
             onChange={(event) => setMerchantEmail(event.target.value)}
           />
-          <input
+          {registering && <input
             type="text"
             className={styles.inputField}
             placeholder="رقم الهاتف"
             value={merchantPhone}
             onChange={(event) => setMerchantPhone(event.target.value)}
-          />
+          />}
           <input
             type="password"
             className={styles.inputField}
-            placeholder="كلمة المرور"
+            placeholder="كلمة مرور من 12 إلى 64 حرفًا"
+            autoComplete={registering ? "new-password" : "current-password"}
             value={merchantPassword}
             onChange={(event) => setMerchantPassword(event.target.value)}
           />
-          <button type="button" className={styles.primaryButton} onClick={loginAsMerchant}>
-            دخول لوحة التاجر
+          <button type="button" className={styles.primaryButton} disabled={authBusy} onClick={loginAsMerchant}>
+            {authBusy ? "جارٍ المعالجة..." : registering ? "إرسال طلب الانضمام" : "دخول لوحة التاجر"}
+          </button>
+          <button type="button" className={styles.primaryButton} disabled={authBusy} onClick={() => { setRegistering(!registering); setMerchantPassword(""); setLoginNotice(""); }}>
+            {registering ? "لدي حساب — تسجيل الدخول" : "تقديم طلب انضمام جديد"}
           </button>
           {loginNotice ? <p className={styles.inlineNote}>{loginNotice}</p> : null}
         </section>
@@ -413,20 +472,27 @@ function MerchantPageContent() {
         {activeTab === "catalog" && (
           <section className={styles.panel}>
             <h2>إضافة / تعديل / حذف المنتجات</h2>
-            <p>يمكنك إنشاء أقسام فرعية، رفع صور متعددة، وضبط السعر والكمية والمقاسات والألوان.</p>
+            <p>اختر التصنيفات التي أضافها المسؤول، وارفع صورًا حقيقية. الكمية المحددة تخص كل خيار مقاس ولون. خيارات المنتج المحفوظ ثابتة للحفاظ على الطلبات؛ أنشئ منتجًا جديدًا لخيارات مختلفة.</p>
+            {categories.length === 0 && <p className={styles.inlineNote} role="alert">يجب أن يضيف المسؤول التصنيفات قبل حفظ أول منتج.</p>}
 
             <div className={styles.formGrid}>
               <input className={styles.inputField} type="text" placeholder="اسم المنتج" value={catalogForm.name} onChange={(event) => handleCatalogField("name", event.target.value)} />
-              <input className={styles.inputField} type="text" placeholder="القسم الرئيسي" value={catalogForm.category} onChange={(event) => handleCatalogField("category", event.target.value)} />
-              <input className={styles.inputField} type="text" placeholder="قسم فرعي (مثال: فساتين سهرة)" value={catalogForm.subCategory} onChange={(event) => handleCatalogField("subCategory", event.target.value)} />
+              <select aria-label="القسم الرئيسي" className={styles.inputField} value={catalogForm.category} onChange={(event) => setCatalogForm(current => ({ ...current, category: event.target.value, subCategory: "" }))}>
+                <option value="">اختر القسم الرئيسي</option>
+                {categories.filter(category => category.parentId === null).map(category => <option key={category.id} value={category.titleAr}>{category.titleAr}</option>)}
+              </select>
+              <select aria-label="القسم الفرعي" className={styles.inputField} value={catalogForm.subCategory} onChange={(event) => handleCatalogField("subCategory", event.target.value)}>
+                <option value="">بدون قسم فرعي</option>
+                {categories.filter(category => category.parentId === categories.find(parent => parent.parentId === null && parent.titleAr === catalogForm.category)?.id).map(category => <option key={category.id} value={category.titleAr}>{category.titleAr}</option>)}
+              </select>
               <input className={styles.inputField} type="text" placeholder="السعر" value={catalogForm.price} onChange={(event) => handleCatalogField("price", event.target.value)} />
-              <input className={styles.inputField} type="number" placeholder="الكمية" value={catalogForm.quantity} onChange={(event) => handleCatalogField("quantity", event.target.value)} />
-              <input className={styles.inputField} type="text" placeholder="المقاسات (S,M,L)" value={catalogForm.sizes} onChange={(event) => handleCatalogField("sizes", event.target.value)} />
-              <input className={styles.inputField} type="text" placeholder="الألوان (أسود, ذهبي)" value={catalogForm.colors} onChange={(event) => handleCatalogField("colors", event.target.value)} />
+              <input className={styles.inputField} type="number" min={0} step={1} placeholder="الكمية لكل خيار مقاس ولون" value={catalogForm.quantity} onChange={(event) => handleCatalogField("quantity", event.target.value)} />
+              <input className={styles.inputField} type="text" disabled={Boolean(editingProductId)} placeholder="المقاسات (S,M,L)" value={catalogForm.sizes} onChange={(event) => handleCatalogField("sizes", event.target.value)} />
+              <input className={styles.inputField} type="text" disabled={Boolean(editingProductId)} placeholder="الألوان (أسود, ذهبي)" value={catalogForm.colors} onChange={(event) => handleCatalogField("colors", event.target.value)} />
               <input
                 className={styles.inputField}
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp"
                 disabled={uploadingImage}
                 onChange={(event) => {
                   const file = event.target.files?.[0] ?? null;
@@ -435,7 +501,7 @@ function MerchantPageContent() {
                 }}
               />
               <input className={styles.inputField} type="text" placeholder="روابط الصور المتعددة أو أسماء الملفات" value={catalogForm.images} onChange={(event) => handleCatalogField("images", event.target.value)} />
-              <textarea className={`${styles.inputField} ${styles.inputTextarea}`} rows={4} placeholder="وصف المنتج (اختياري)" readOnly value="الوصف التفصيلي يُربط في API لاحقًا ضمن نفس payload." />
+              <textarea className={`${styles.inputField} ${styles.inputTextarea}`} rows={4} maxLength={5000} placeholder="وصف المنتج" value={catalogForm.description} onChange={(event) => handleCatalogField("description", event.target.value)} />
             </div>
 
             <div className={styles.actionRow}>

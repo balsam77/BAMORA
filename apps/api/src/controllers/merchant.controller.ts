@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/commo
 import { CurrentUser, type AuthenticatedUser } from "../common/current-user.decorator";
 import { Roles } from "../common/roles.decorator";
 import { CommerceService } from "../services/commerce.service";
+import { MerchantProductDto } from "./merchant-product.dto";
 
 @Roles("merchant")
 @Controller("api/merchant")
@@ -22,7 +23,7 @@ export class MerchantController {
   @Post("products")
   createProduct(
     @CurrentUser() user: AuthenticatedUser | null,
-    @Body() body: { name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
+    @Body() body: MerchantProductDto,
   ) {
     return this.commerceService.merchantUpsertProduct(body, user ?? undefined);
   }
@@ -31,9 +32,9 @@ export class MerchantController {
   updateProduct(
     @CurrentUser() user: AuthenticatedUser | null,
     @Param("id") id: string,
-    @Body() body: { name: string; stock: number; price: string; images: string[]; sizes: string[]; colors: string[] },
+    @Body() body: MerchantProductDto,
   ) {
-    return this.commerceService.merchantUpsertProduct({ id, ...body }, user ?? undefined);
+    return this.commerceService.merchantUpsertProduct({ ...body, id }, user ?? undefined);
   }
 
   @Delete("products/:id")
