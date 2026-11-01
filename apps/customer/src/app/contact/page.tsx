@@ -5,10 +5,10 @@ import { LegalPageFrame } from "@/components/legal/LegalPageFrame";
 import { type AppLanguage } from "@/lib/language";
 import styles from "./contact.module.css";
 
-const CONTACT_PHONE = "+972 59-000-0000";
-const CONTACT_EMAIL = "customer@bamora.com";
-const CONTACT_ADDRESS_AR = "شارع النجاح 15، الطابق 3، القدس";
-const CONTACT_ADDRESS_HE = "רחוב א-נג'אח 15, קומה 3, ירושלים";
+const CONTACT_PHONE = "0548067553";
+const CONTACT_EMAIL = "BALSAMHAMODE3@GMAIL.COM";
+const CONTACT_ADDRESS_AR = "البعينة نجيدات، شارع 0";
+const CONTACT_ADDRESS_HE = "בעינה נג'ידאת, רחוב 0";
 
 function t(language: AppLanguage, values: { ar: string; he: string; en?: string }) {
   if (language === "he") {
@@ -59,7 +59,7 @@ export default function ContactPage() {
               </li>
               <li>
                 <span className={styles.infoLabel}>{t(language, { ar: "WhatsApp", he: "WhatsApp", en: "WhatsApp" })}</span>
-                <a className={styles.infoValue} href="https://wa.me/972590000000" target="_blank" rel="noreferrer">
+                <a className={styles.infoValue} href="https://wa.me/972548067553" target="_blank" rel="noreferrer">
                   {CONTACT_PHONE}
                 </a>
               </li>
