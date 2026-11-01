@@ -1537,7 +1537,7 @@ export default function BusinessPage() {
               </button>
             </div>
             {notice ? <p className={styles.inlineNote}>{notice}</p> : null}
-            {accountType === "merchant" ? <a href="/merchant">{language === "ar" ? "تقديم طلب انضمام تاجر جديد" : "Apply as a new merchant"}</a> : null}
+            {accountType === "merchant" ? <a href={`https://wa.me/972548067553?text=${encodeURIComponent("طلب انضمام تاجر BAMORA\n\nاسم المتجر:\nالبريد الإلكتروني:\nرقم الهاتف:\nرقم الهوية:")}`} target="_blank" rel="noreferrer">{language === "ar" ? "تقديم طلب انضمام تاجر جديد" : "Apply as a new merchant"}</a> : null}
           </section>
         </div>
       </div>
