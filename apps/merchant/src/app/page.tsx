@@ -414,24 +414,25 @@ function MerchantPageContent() {
   }
 
   if (role !== "merchant") {
-    const whatsappUrl = `https://wa.me/972548067553?text=${encodeURIComponent("طلب انضمام تاجر BAMORA\n\nاسم المتجر:\nالبريد الإلكتروني:\nرقم الهاتف:\nرقم الهوية:")}`;
+    const whatsappUrl = `https://wa.me/972548067553?text=${encodeURIComponent("مرحبًا، أنا مهتم بالانضمام إلى BAMORA كتاجر. أريد معرفة تفاصيل التسجيل")}`;
     return (
       <div className={styles.loginShell}>
         <section className={styles.loginCard}>
           <p className={styles.brand}>BAMORA</p>
-          <h1>{registering ? "طلب انضمام تاجر" : "بوابة التاجر"}</h1>
           {registering ? (
             <>
-              <p>أرسل طلب الانضمام عبر واتساب وسنسجّلك ونوافق عليك.</p>
-              <a href={whatsappUrl} target="_blank" rel="noreferrer" className={styles.primaryButton} style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
-                إرسال طلب الانضمام عبر واتساب
+              <h1>انضم إلى BAMORA — ابدأ البيع معنا</h1>
+              <p>يسعدنا اهتمامك بالانضمام إلى BAMORA. تواصل معنا عبر WhatsApp، وسنتواصل معك شخصيًا لجمع المعلومات اللازمة وشرح خطوات الانضمام.</p>
+              <a href={whatsappUrl} target="_blank" rel="noreferrer" className={styles.primaryButton} style={{ display: "block", textAlign: "center", textDecoration: "none", background: "linear-gradient(135deg, #c9a962, #b8954a)", color: "#070707", fontWeight: 600 }}>
+                تواصل معنا عبر WhatsApp
               </a>
-              <button type="button" className={styles.primaryButton} onClick={() => { setRegistering(false); setLoginNotice(""); }}>
+              <button type="button" className={styles.secondaryButton} onClick={() => { setRegistering(false); setLoginNotice(""); }}>
                 لدي حساب — تسجيل الدخول
               </button>
             </>
           ) : (
             <>
+              <h1>بوابة التاجر</h1>
               <p>أدخل بيانات التاجر للدخول إلى لوحة التحكم.</p>
               <input
                 type="email"
@@ -451,7 +452,7 @@ function MerchantPageContent() {
               <button type="button" className={styles.primaryButton} disabled={authBusy} onClick={loginAsMerchant}>
                 {authBusy ? "جارٍ المعالجة..." : "دخول لوحة التاجر"}
               </button>
-              <button type="button" className={styles.primaryButton} disabled={authBusy} onClick={() => { setRegistering(true); setMerchantPassword(""); setLoginNotice(""); }}>
+              <button type="button" className={styles.secondaryButton} disabled={authBusy} onClick={() => { setRegistering(true); setMerchantPassword(""); setLoginNotice(""); }}>
                 تقديم طلب انضمام جديد
               </button>
             </>
