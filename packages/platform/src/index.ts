@@ -1094,6 +1094,7 @@ export type MerchantRepository = {
   getPlan(): Promise<MerchantPlanRecord>;
   requestPlan(plan: MerchantPlanChoice): Promise<MerchantPlanRecord>;
   uploadProductImage(file: File): Promise<{ url: string; filename: string }>;
+  addCategory(input: { nameAr: string; slug: string; icon?: string; parentId?: string | null }): Promise<CatalogCategory>;
   addProduct(input: MerchantProductInput): Promise<MerchantProduct>;
   updateProduct(id: string, input: MerchantProductInput): Promise<MerchantProduct | null>;
   deleteProduct(id: string): Promise<boolean>;
@@ -1225,6 +1226,9 @@ function createMockMerchantRepository(): MerchantRepository {
         url: file.name,
         filename: file.name,
       };
+    },
+    async addCategory(input) {
+      return { id: buildId("CAT"), titleAr: input.nameAr, parentId: input.parentId ?? null };
     },
     async addProduct(input) {
       const dashboard = getMerchantDataset();
@@ -1855,6 +1859,21 @@ function createApiMerchantRepository(): MerchantRepository {
         url: toPublicAssetUrl(uploaded.url),
         filename: uploaded.filename,
       };
+    },
+    async addCategory(input) {
+      const created = await apiRequest<{ id: string; nameAr: string; parentId?: string | null }>(
+        platformApiContracts.merchant.categories,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            nameAr: input.nameAr,
+            slug: input.slug,
+            icon: input.icon,
+            parentId: input.parentId ?? null,
+          }),
+        },
+      );
+      return { id: created.id, titleAr: created.nameAr, parentId: created.parentId ?? null };
     },
     async addProduct(input) {
       const created = await apiRequest<{
@@ -2701,6 +2720,7 @@ export const platformApiContracts = {
     coupons: "/api/merchant/coupons",
     plan: "/api/merchant/plan",
     uploads: "/api/uploads/images",
+    categories: "/api/merchant/categories",
   },
   admin: {
     dashboard: "/api/admin/dashboard",

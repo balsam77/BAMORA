@@ -128,6 +128,9 @@ function MerchantPageContent() {
   const [catalogForm, setCatalogForm] = useState<ProductFormState>(emptyForm);
   const [productNotice, setProductNotice] = useState("يمكنك إضافة صور متعددة للمنتج الواحد قبل الحفظ.");
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryNotice, setCategoryNotice] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
 
   const loadDashboard = async () => {
     const [data, catalogCategories] = await Promise.all([
@@ -138,6 +141,27 @@ function MerchantPageContent() {
     setOrders(data.orders);
     setNotifications(data.notifications);
     setStats(data.stats);
+  };
+
+  const handleAddCategory = async () => {
+    const nameAr = newCategoryName.trim();
+    if (!nameAr) {
+      setCategoryNotice("اكتب اسم الصنف أولًا.");
+      return;
+    }
+    const slug = nameAr.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").replace(/^-+|-+$/g, "") || `cat-${Date.now()}`;
+    setSavingCategory(true);
+    setCategoryNotice("");
+    try {
+      await merchantRepository.addCategory({ nameAr, slug, icon: "🛍️" });
+      setNewCategoryName("");
+      setCategoryNotice("تم حفظ الصنف.");
+      await loadDashboard();
+    } catch (error) {
+      setCategoryNotice(error instanceof Error ? error.message : "تعذر حفظ الصنف.");
+    } finally {
+      setSavingCategory(false);
+    }
   };
 
   useEffect(() => {
@@ -472,8 +496,13 @@ function MerchantPageContent() {
         {activeTab === "catalog" && (
           <section className={styles.panel}>
             <h2>إضافة / تعديل / حذف المنتجات</h2>
-            <p>اختر التصنيفات التي أضافها المسؤول، وارفع صورًا حقيقية. الكمية المحددة تخص كل خيار مقاس ولون. خيارات المنتج المحفوظ ثابتة للحفاظ على الطلبات؛ أنشئ منتجًا جديدًا لخيارات مختلفة.</p>
-            {categories.length === 0 && <p className={styles.inlineNote} role="alert">يجب أن يضيف المسؤول التصنيفات قبل حفظ أول منتج.</p>}
+            <p>اختر التصنيفات الموجودة أو أنشئ صنفًا جديدًا، وارفع صورًا حقيقية. الكمية المحددة تخص كل خيار مقاس ولون. خيارات المنتج المحفوظ ثابتة للحفاظ على الطلبات؛ أنشئ منتجًا جديدًا لخيارات مختلفة.</p>
+
+            <div className={styles.formGrid}>
+              <input className={styles.inputField} type="text" placeholder="اسم صنف جديد (مثال: مستحضرات تجميل)" value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} />
+              <button type="button" className={styles.secondaryButton} disabled={savingCategory} onClick={handleAddCategory}>{savingCategory ? "جارٍ الحفظ..." : "إضافة صنف"}</button>
+            </div>
+            {categoryNotice && <p className={styles.inlineNote} role="status">{categoryNotice}</p>}
 
             <div className={styles.formGrid}>
               <input className={styles.inputField} type="text" placeholder="اسم المنتج" value={catalogForm.name} onChange={(event) => handleCatalogField("name", event.target.value)} />

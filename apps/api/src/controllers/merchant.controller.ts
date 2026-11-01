@@ -42,6 +42,16 @@ export class MerchantController {
     return { deleted: await this.commerceService.merchantDeleteProduct(id, user ?? undefined) };
   }
 
+  @Post("categories")
+  createCategory(@Body() body: { nameAr: string; slug: string; icon?: string; parentId?: string | null }) {
+    return this.commerceService.upsertCategory({
+      nameAr: body.nameAr,
+      slug: body.slug,
+      icon: body.icon ?? "🛍️",
+      parentId: body.parentId ?? null,
+    });
+  }
+
   @Get("orders")
   async orders(@CurrentUser() user: AuthenticatedUser | null) {
     const dashboard = await this.commerceService.merchantDashboard(user ?? undefined);
