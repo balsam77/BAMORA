@@ -227,8 +227,18 @@ function MerchantPageContent() {
     setAuthBusy(true);
     try {
       if (registering) {
-        if (!businessName.trim() || !phone || !/^\d{6,20}$/.test(nationalId)) {
-          setLoginNotice("أكمل اسم المتجر والهاتف ورقم الهوية الصحيح.");
+        if (!businessName.trim()) {
+          setLoginNotice("أدخل اسم المتجر.");
+          setAuthBusy(false);
+          return;
+        }
+        if (!phone || phone.length < 7) {
+          setLoginNotice("أدخل رقم هاتف صحيح (7 أرقام على الأقل).");
+          setAuthBusy(false);
+          return;
+        }
+        if (!/^\d{6,20}$/.test(nationalId)) {
+          setLoginNotice("أدخل رقم هوية صحيح (6-20 رقمًا).");
           setAuthBusy(false);
           return;
         }
