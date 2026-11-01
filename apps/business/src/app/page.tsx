@@ -1,6 +1,6 @@
 "use client";
 
-// Merchant login: clear conflicting role (rebuild after root change) so merchant can always log in
+// Merchant login: clear conflicting role so merchant can always log in
 import { useEffect, useMemo, useState } from "react";
 import MerchantPage from "../../../merchant/src/app/page";
 import AdminPage from "../../../admin/src/app/page";
@@ -119,93 +119,93 @@ async function establishAdminApiSession(preferredEmail?: string, preferredPasswo
 const copy = {
   ar: {
     appTitle: "BAMORA Business",
-    pickRoleTitle: "׳´ֲ§׳´ֲ®׳´ֳ—ן¢ֲ׳´ֲ§׳´ֲ± ן¢ג€ ן¢ֻ†׳´ֲ¹ ׳´ֲ§ן¢ג€׳´ֲ¯׳´ֲ®ן¢ֻ†ן¢ג€",
-    pickRoleSubtitle: "׳´ֲ§׳´ֲ®׳´ֳ—׳´ֲ± ן¢ג€ ן¢ֻ†׳´ֲ¹ ׳´ֲ§ן¢ג€׳´ֲ­׳´ֲ³׳´ֲ§׳´ֲ¨ ׳´ֲ£ן¢ֻ†ן¢ג€ן¢ג€¹׳´ֲ§׳´ֲ ׳´ֲ«ן¢ג€¦ ׳´ֲ³׳´ֲ¬ן¢ג€ ׳´ֲ§ן¢ג€׳´ֲ¯׳´ֲ®ן¢ֻ†ן¢ג€ ׳´ֲ¨׳´ֲµן¢ֲ׳´ֳ·׳´ֲ© ן¢ג€¡׳´ֲ°׳´ֲ§ ׳´ֲ§ן¢ג€ן¢ג€ ן¢ֻ†׳´ֲ¹ ן¢ֲן¢ג€׳´ֲ·.",
+    pickRoleTitle: "اختيار نوع الدخول",
+    pickRoleSubtitle: "اختر نوع الحساب أولًا، ثم سجل الدخول بصيغة هذا النوع فقط.",
     chooseDelivery: "Delivery",
     chooseMerchant: "Merchant",
     chooseAdmin: "Super Admin",
-    continueToLogin: "ן¢ג€¦׳´ֳ—׳´ֲ§׳´ֲ¨׳´ֲ¹׳´ֲ© ׳´ֳ—׳´ֲ³׳´ֲ¬ן¢ֲן¢ג€ ׳´ֲ§ן¢ג€׳´ֲ¯׳´ֲ®ן¢ֻ†ן¢ג€",
-    backToRoleSelect: "׳´ֲ§ן¢ג€׳´ֲ¹ן¢ֻ†׳´ֲ¯׳´ֲ© ן¢ג€׳´ֲ§׳´ֲ®׳´ֳ—ן¢ֲ׳´ֲ§׳´ֲ± ׳´ֲ§ן¢ג€ן¢ג€ ן¢ֻ†׳´ֲ¹",
-    username: "׳´ֲ§׳´ֲ³ן¢ג€¦ ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ³׳´ֳ—׳´ֲ®׳´ֲ¯ן¢ג€¦",
-    email: "׳´ֲ§ן¢ג€׳´ֲ¨׳´ֲ±ן¢ֲ׳´ֲ¯ ׳´ֲ§ן¢ג€׳´ֲ¥ן¢ג€ן¢ֶ’׳´ֳ—׳´ֲ±ן¢ֻ†ן¢ג€ ן¢ֲ",
-    loginNumber: "׳´ֲ±ן¢ג€ן¢ג€¦ ׳´ֳ—׳´ֲ³׳´ֲ¬ן¢ֲן¢ג€ ׳´ֲ§ן¢ג€׳´ֲ¯׳´ֲ®ן¢ֻ†ן¢ג€",
-    password: "ן¢ֶ’ן¢ג€ן¢ג€¦׳´ֲ© ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ±ן¢ֻ†׳´ֲ±",
-    phone: "׳´ֲ±ן¢ג€ן¢ג€¦ ׳´ֲ§ן¢ג€ן¢ג€¡׳´ֲ§׳´ֳ—ן¢ֲ",
-    login: "׳´ֳ—׳´ֲ³׳´ֲ¬ן¢ֲן¢ג€ ׳´ֲ§ן¢ג€׳´ֲ¯׳´ֲ®ן¢ֻ†ן¢ג€",
-    logout: "׳´ֳ—׳´ֲ³׳´ֲ¬ן¢ֲן¢ג€ ׳´ֲ§ן¢ג€׳´ֲ®׳´ֲ±ן¢ֻ†׳´ֲ¬",
-    accessDenied: "׳´ֲ¨ן¢ֲ׳´ֲ§ן¢ג€ ׳´ֲ§׳´ֳ— ׳´ֲ§ן¢ג€׳´ֲ¯׳´ֲ®ן¢ֻ†ן¢ג€ ׳´ֳ·ן¢ֲ׳´ֲ± ׳´ֲµ׳´ֲ­ן¢ֲ׳´ֲ­׳´ֲ©.",
-    roleNotAllowed: "ן¢ג€ ן¢ֻ†׳´ֲ¹ ׳´ֲ§ן¢ג€׳´ֲ­׳´ֲ³׳´ֲ§׳´ֲ¨ ׳´ֲ§ן¢ג€׳´ֲ­׳´ֲ§ן¢ג€ן¢ֲ ׳´ֳ·ן¢ֲ׳´ֲ± ן¢ג€¦׳´ֲ³ן¢ג€¦ן¢ֻ†׳´ֲ­ ן¢ג€ן¢ג€¡ ׳´ֲ¨ן¢ג€¡׳´ֲ°ן¢ג€¡ ׳´ֲ§ן¢ג€׳´ֲµן¢ֲ׳´ֲ­׳´ֲ©.",
-    deliveryTitle: "ן¢ג€¦׳´ֲ±ן¢ֶ’׳´ֲ² ׳´ֲ§ן¢ג€׳´ֳ—ן¢ֻ†׳´ֲµן¢ֲן¢ג€",
-    deliverySubtitle: "ן¢ג€ן¢ֻ†׳´ֲ­׳´ֲ© ׳´ֲ³׳´ֲ±ן¢ֲ׳´ֲ¹׳´ֲ© ן¢ג€ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲן¢ֲ ׳´ֲ´׳´ֲ±ן¢ֶ’׳´ֲ© ׳´ֲ§ן¢ג€׳´ֳ—ן¢ֻ†׳´ֲµן¢ֲן¢ג€: ן¢ג€¦ן¢ג€ ׳´ֲ§׳´ֲ·ן¢ג€׳´ֲ ׳´ֳ—׳´ֲ¹ן¢ֲן¢ֲן¢ג€ ׳´ֲ ׳´ֲ­׳´ֲ§ן¢ג€׳´ֲ§׳´ֳ—׳´ֲ ן¢ֻ†׳´ֲ§׳´ֳ—׳´ֲµ׳´ֲ§ן¢ג€ ן¢ג€¦׳´ֲ¨׳´ֲ§׳´ֲ´׳´ֲ±.",
-    noOrders: "ן¢ג€׳´ֲ§ ׳´ֳ—ן¢ֻ†׳´ֲ¬׳´ֲ¯ ׳´ֲ·ן¢ג€׳´ֲ¨׳´ֲ§׳´ֳ— ן¢ג€¦׳´ֲ·׳´ֲ§׳´ֲ¨ן¢ג€׳´ֲ© ׳´ֲ­׳´ֲ§ן¢ג€ן¢ֲן¢ג€¹׳´ֲ§.",
-    readyNow: "׳´ֲ¬׳´ֲ§ן¢ג€¡׳´ֲ² ן¢ג€ן¢ג€׳´ֳ—ן¢ֻ†׳´ֲµן¢ֲן¢ג€ ׳´ֲ§ן¢ג€׳´ֲ¢ן¢ג€ ",
-    assignedToEmployee: "ן¢ג€¦ן¢ֲ׳´ֲ¹ן¢ֲן¢ג€˜ן¢ג€ ׳´ֲ© ן¢ג€ן¢ג€¦ן¢ג€ ׳´ֲ¯ן¢ֻ†׳´ֲ¨",
-    pickedUp: "׳´ֳ—ן¢ג€¦ ׳´ֲ§ן¢ג€׳´ֲ§׳´ֲ³׳´ֳ—ן¢ג€׳´ֲ§ן¢ג€¦",
-    outForDelivery: "׳´ֲ®׳´ֲ±׳´ֲ¬׳´ֳ— ן¢ג€ן¢ג€׳´ֳ—ן¢ֻ†׳´ֲµן¢ֲן¢ג€",
-    delivered: "׳´ֳ—ן¢ג€¦ ׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ³ן¢ג€ן¢ֲן¢ג€¦",
-    todayOrders: "׳´ֲ·ן¢ג€׳´ֲ¨׳´ֲ§׳´ֳ— ׳´ֲ§ן¢ג€ן¢ֲן¢ֻ†ן¢ג€¦",
-    region: "׳´ֲ§ן¢ג€ן¢ג€¦ן¢ג€ ׳´ֲ·ן¢ג€׳´ֲ©",
-    allRegions: "ן¢ֶ’ן¢ג€ ׳´ֲ§ן¢ג€ן¢ג€¦ן¢ג€ ׳´ֲ§׳´ֲ·ן¢ג€",
-    storeName: "׳´ֲ§׳´ֲ³ן¢ג€¦ ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ­ן¢ג€",
-    customerName: "׳´ֲ§׳´ֲ³ן¢ג€¦ ׳´ֲ§ן¢ג€׳´ֲ²׳´ֲ¨ן¢ֻ†ן¢ג€ ",
-    status: "׳´ֲ§ן¢ג€׳´ֲ­׳´ֲ§ן¢ג€׳´ֲ©",
-    allEmployees: "ן¢ֶ’ן¢ג€ ׳´ֲ§ן¢ג€ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲן¢ֲן¢ג€ ",
-    unassigned: "׳´ֳ·ן¢ֲ׳´ֲ± ן¢ג€¦׳´ֲ¹ן¢ֲן¢ג€˜ן¢ג€ ",
-    date: "׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ§׳´ֲ±ן¢ֲ׳´ֲ®",
-    search: "׳´ֲ¨׳´ֲ­׳´ֲ« ׳´ֲ¨׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨ ׳´ֲ£ן¢ֻ† ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ­ן¢ג€ ׳´ֲ£ן¢ֻ† ׳´ֲ§ן¢ג€׳´ֲ²׳´ֲ¨ן¢ֻ†ן¢ג€ ",
-    orderId: "׳´ֲ±ן¢ג€ן¢ג€¦ ׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨",
-    orderDetails: "׳´ֳ—ן¢ֲ׳´ֲ§׳´ֲµן¢ֲן¢ג€ ׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨",
+    continueToLogin: "متابعة تسجيل الدخول",
+    backToRoleSelect: "العودة لاختيار النوع",
+    username: "اسم المستخدم",
+    email: "البريد الإلكتروني",
+    loginNumber: "رقم تسجيل الدخول",
+    password: "كلمة المرور",
+    phone: "رقم الهاتف",
+    login: "تسجيل الدخول",
+    logout: "تسجيل الخروج",
+    accessDenied: "بيانات الدخول غير صحيحة.",
+    roleNotAllowed: "نوع الحساب الحالي غير مسموح له بهذه الصفحة.",
+    deliveryTitle: "مركز التوصيل",
+    deliverySubtitle: "لوحة سريعة لموظفي شركة التوصيل: مناطق، تعيين، حالات، واتصال مباشر.",
+    noOrders: "لا توجد طلبات مطابقة حاليًا.",
+    readyNow: "جاهز للتوصيل الآن",
+    assignedToEmployee: "مُعيّنة لمندوب",
+    pickedUp: "تم الاستلام",
+    outForDelivery: "خرجت للتوصيل",
+    delivered: "تم التسليم",
+    todayOrders: "طلبات اليوم",
+    region: "المنطقة",
+    allRegions: "كل المناطق",
+    storeName: "اسم المحل",
+    customerName: "اسم الزبون",
+    status: "الحالة",
+    allEmployees: "كل الموظفين",
+    unassigned: "غير معيّن",
+    date: "التاريخ",
+    search: "بحث بالطلب أو المحل أو الزبون",
+    orderId: "رقم الطلب",
+    orderDetails: "تفاصيل الطلب",
     shopSection: "SHOP",
     customerSection: "CUSTOMER",
     orderSection: "ORDER",
-    shopOwner: "ן¢ג€¦׳´ֲ³׳´ג‚×ן¢ֻ†ן¢ג€ ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ­ן¢ג€",
-    phoneLabel: "׳´ֲ§ן¢ג€ן¢ג€¡׳´ֲ§׳´ֳ—ן¢ֲ",
-    address: "׳´ֲ§ן¢ג€׳´ֲ¹ן¢ג€ ן¢ֻ†׳´ֲ§ן¢ג€ ",
-    location: "׳´ֲ§ן¢ג€ן¢ג€¦ן¢ֻ†ן¢ג€׳´ֲ¹",
-    products: "׳´ֲ§ן¢ג€ן¢ג€¦ן¢ג€ ׳´ֳ—׳´ֲ¬׳´ֲ§׳´ֳ—",
-    quantities: "׳´ֲ§ן¢ג€ן¢ֶ’ן¢ג€¦ן¢ֲ׳´ֲ§׳´ֳ—",
-    total: "׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ¨ן¢ג€׳´ֳ·",
-    payment: "׳´ֲ·׳´ֲ±ן¢ֲן¢ג€׳´ֲ© ׳´ֲ§ן¢ג€׳´ֲ¯ן¢ֲ׳´ֲ¹",
-    paymentStatus: "׳´ֲ­׳´ֲ§ן¢ג€׳´ֲ© ׳´ֲ§ן¢ג€׳´ֲ¯ן¢ֲ׳´ֲ¹",
-    notes: "׳´ֲ§ן¢ג€ן¢ג€¦ן¢ג€׳´ֲ§׳´ֲ­׳´ֲ¸׳´ֲ§׳´ֳ—",
-    createdAt: "ן¢ֻ†ן¢ג€׳´ֳ— ׳´ֲ§ן¢ג€׳´ֲ¥ן¢ג€ ׳´ֲ´׳´ֲ§׳´ֲ¡",
-    preparedAt: "ן¢ֻ†ן¢ג€׳´ֳ— ׳´ֲ§ן¢ג€׳´ֲ¬׳´ֲ§ן¢ג€¡׳´ֲ²ן¢ֲ׳´ֲ©",
-    pickedUpAt: "ן¢ֻ†ן¢ג€׳´ֳ— ׳´ֲ§ן¢ג€׳´ֲ§׳´ֲ³׳´ֳ—ן¢ג€׳´ֲ§ן¢ג€¦",
-    deliveredAt: "ן¢ֻ†ן¢ג€׳´ֳ— ׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ³ן¢ג€ן¢ֲן¢ג€¦",
-    quickActions: "׳´ֲ£׳´ֲ²׳´ֲ±׳´ֲ§׳´ֲ± ׳´ֲ³׳´ֲ±ן¢ֲ׳´ֲ¹׳´ֲ©",
-    callStore: "׳´ֲ§׳´ֳ—׳´ֲµן¢ג€ ׳´ֲ¨׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ­ן¢ג€",
-    callCustomer: "׳´ֲ§׳´ֳ—׳´ֲµן¢ג€ ׳´ֲ¨׳´ֲ§ן¢ג€׳´ֲ²׳´ֲ¨ן¢ֻ†ן¢ג€ ",
-    openStoreMap: "׳´ֲ§ן¢ֲ׳´ֳ—׳´ֲ­ ן¢ג€¦ן¢ֻ†ן¢ג€׳´ֲ¹ ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ­ן¢ג€",
-    openCustomerMap: "׳´ֲ§ן¢ֲ׳´ֳ—׳´ֲ­ ן¢ג€¦ן¢ֻ†ן¢ג€׳´ֲ¹ ׳´ֲ§ן¢ג€׳´ֲ²׳´ֲ¨ן¢ֻ†ן¢ג€ ",
-    receiveOrder: "׳´ֲ§׳´ֲ³׳´ֳ—ן¢ג€׳´ֲ§ן¢ג€¦ ׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨",
-    startDelivery: "׳´ֲ¨׳´ֲ¯׳´ֲ¡ ׳´ֲ§ן¢ג€׳´ֳ—ן¢ֻ†׳´ֲµן¢ֲן¢ג€",
-    markDelivered: "׳´ֳ—ן¢ג€¦ ׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ³ן¢ג€ן¢ֲן¢ג€¦",
-    reportIssue: "ן¢ג€¦׳´ֲ´ן¢ֶ’ן¢ג€׳´ֲ© ן¢ֲן¢ֲ ׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨",
-    assignToEmployee: "׳´ֳ—׳´ֲ¹ן¢ֲן¢ֲן¢ג€  ן¢ג€ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲ",
-    assign: "׳´ֳ—׳´ֲ¹ן¢ֲן¢ֲן¢ג€ ",
-    assignedTo: "׳´ֲ§ן¢ג€ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲ ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ¹ן¢ֲן¢ג€˜ן¢ג€ ",
-    nextOrder: "׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨ ׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ§ן¢ג€ן¢ֲ",
-    previousOrder: "׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨ ׳´ֲ§ן¢ג€׳´ֲ³׳´ֲ§׳´ֲ¨ן¢ג€",
-    regionsBoard: "ן¢ג€ן¢ֻ†׳´ֲ­׳´ֲ© ׳´ֲ§ן¢ג€ן¢ג€¦ן¢ג€ ׳´ֲ§׳´ֲ·ן¢ג€",
-    ordersCount: "׳´ֲ¹׳´ֲ¯׳´ֲ¯ ׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨׳´ֲ§׳´ֳ—",
-    updateStatus: "׳´ֳ—׳´ֲ­׳´ֲ¯ן¢ֲ׳´ֲ« ׳´ֲ§ן¢ג€׳´ֲ­׳´ֲ§ן¢ג€׳´ֲ©",
-    employeeManagement: "׳´ֲ¥׳´ֲ¯׳´ֲ§׳´ֲ±׳´ֲ© ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲן¢ֲ ׳´ֲ§ן¢ג€׳´ֳ—ן¢ֻ†׳´ֲµן¢ֲן¢ג€",
-    addEmployee: "׳´ֲ¥׳´ֲ¶׳´ֲ§ן¢ֲ׳´ֲ© ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲ",
-    editEmployee: "׳´ֳ—׳´ֲ¹׳´ֲ¯ן¢ֲן¢ג€ ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲ",
-    fullName: "׳´ֲ§ן¢ג€׳´ֲ§׳´ֲ³ן¢ג€¦ ׳´ֲ§ן¢ג€ן¢ֶ’׳´ֲ§ן¢ג€¦ן¢ג€",
-    employeePhone: "׳´ֲ±ן¢ג€ן¢ג€¦ ׳´ֲ§ן¢ג€ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲ",
-    employeeRegion: "ן¢ג€¦ן¢ג€ ׳´ֲ·ן¢ג€׳´ֲ© ׳´ֲ§ן¢ג€ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲ",
-    cancelEdit: "׳´ֲ¥ן¢ג€׳´ֳ·׳´ֲ§׳´ֲ¡",
-    disableEmployee: "׳´ֳ—׳´ֲ¹׳´ֲ·ן¢ֲן¢ג€",
-    enableEmployee: "׳´ֳ—ן¢ֲ׳´ֲ¹ן¢ֲן¢ג€",
-    deleteEmployee: "׳´ֲ­׳´ֲ°ן¢ֲ",
-    employeeOrders: "׳´ֲ·ן¢ג€׳´ֲ¨׳´ֲ§׳´ֳ— ׳´ֲ§ן¢ג€ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲ",
-    resetFilters: "׳´ֳ—׳´ֲµן¢ֲן¢ֲ׳´ֲ± ׳´ֲ§ן¢ג€ן¢ֲן¢ג€׳´ֲ§׳´ֳ—׳´ֲ±",
-    invalidFlowAction: "׳´ֲ§ן¢ג€׳´ֲ­׳´ֲ§ן¢ג€׳´ֲ© ׳´ֲ§ן¢ג€׳´ֲ­׳´ֲ§ן¢ג€ן¢ֲ׳´ֲ© ן¢ג€׳´ֲ§ ׳´ֳ—׳´ֲ³ן¢ג€¦׳´ֲ­ ׳´ֲ¨ן¢ג€¡׳´ֲ°ן¢ג€¡ ׳´ֲ§ן¢ג€׳´ֲ¹ן¢ג€¦ן¢ג€ן¢ֲ׳´ֲ©.",
-    adminWorkspace: "ן¢ג€ן¢ֻ†׳´ֲ­׳´ֲ© ׳´ֲ§ן¢ג€׳´ֲ¥׳´ֲ¯׳´ֲ§׳´ֲ±׳´ֲ©",
-    merchantPhoneHint: "׳´ֲ£׳´ֲ¯׳´ֲ®ן¢ג€ ׳´ֲ±ן¢ג€ן¢ג€¦ ן¢ג€¡׳´ֲ§׳´ֳ—ן¢ֲ ׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ§׳´ֲ¬׳´ֲ±",
-    merchantPasswordHint: "ן¢ֶ’ן¢ג€ן¢ג€¦׳´ֲ© ן¢ג€¦׳´ֲ±ן¢ֻ†׳´ֲ± ׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ§׳´ֲ¬׳´ֲ± (12 ׳´ֲ­׳´ֲ±ן¢ֲן¢ג€¹׳´ֲ§ ׳´ֲ¹ן¢ג€ן¢ג€° ׳´ֲ§ן¢ג€׳´ֲ£ן¢ג€ן¢ג€)",
-    wrongMerchantCredentials: "׳´ֲ£׳´ֲ¯׳´ֲ®ן¢ג€ ׳´ֲ§ן¢ג€׳´ֲ¨׳´ֲ±ן¢ֲ׳´ֲ¯ ׳´ֲ§ן¢ג€׳´ֲ¥ן¢ג€ן¢ֶ’׳´ֳ—׳´ֲ±ן¢ֻ†ן¢ג€ ן¢ֲ ן¢ֻ†ן¢ֶ’ן¢ג€ן¢ג€¦׳´ֲ© ן¢ג€¦׳´ֲ±ן¢ֻ†׳´ֲ± ׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ§׳´ֲ¬׳´ֲ±.",
+    shopOwner: "مسؤول المحل",
+    phoneLabel: "الهاتف",
+    address: "العنوان",
+    location: "الموقع",
+    products: "المنتجات",
+    quantities: "الكميات",
+    total: "المبلغ",
+    payment: "طريقة الدفع",
+    paymentStatus: "حالة الدفع",
+    notes: "الملاحظات",
+    createdAt: "وقت الإنشاء",
+    preparedAt: "وقت الجاهزية",
+    pickedUpAt: "وقت الاستلام",
+    deliveredAt: "وقت التسليم",
+    quickActions: "أزرار سريعة",
+    callStore: "اتصل بالمحل",
+    callCustomer: "اتصل بالزبون",
+    openStoreMap: "افتح موقع المحل",
+    openCustomerMap: "افتح موقع الزبون",
+    receiveOrder: "استلام الطلب",
+    startDelivery: "بدء التوصيل",
+    markDelivered: "تم التسليم",
+    reportIssue: "مشكلة في الطلب",
+    assignToEmployee: "تعيين لموظف",
+    assign: "تعيين",
+    assignedTo: "الموظف المعيّن",
+    nextOrder: "الطلب التالي",
+    previousOrder: "الطلب السابق",
+    regionsBoard: "لوحة المناطق",
+    ordersCount: "عدد الطلبات",
+    updateStatus: "تحديث الحالة",
+    employeeManagement: "إدارة موظفي التوصيل",
+    addEmployee: "إضافة موظف",
+    editEmployee: "تعديل موظف",
+    fullName: "الاسم الكامل",
+    employeePhone: "رقم الموظف",
+    employeeRegion: "منطقة الموظف",
+    cancelEdit: "إلغاء",
+    disableEmployee: "تعطيل",
+    enableEmployee: "تفعيل",
+    deleteEmployee: "حذف",
+    employeeOrders: "طلبات الموظف",
+    resetFilters: "تصفير الفلاتر",
+    invalidFlowAction: "الحالة الحالية لا تسمح بهذه العملية.",
+    adminWorkspace: "لوحة الإدارة",
+    merchantPhoneHint: "أدخل رقم هاتف التاجر",
+    merchantPasswordHint: "كلمة مرور التاجر (12 حرفًا على الأقل)",
+    wrongMerchantCredentials: "أدخل البريد الإلكتروني وكلمة مرور التاجر.",
   },
   en: {
     appTitle: "BAMORA Business",
@@ -1039,7 +1039,7 @@ function DeliveryWorkspace({
                               <div className={styles.orderHeader}>
                                 <div>
                                   <h3 className={styles.orderTitle}>{order.id}</h3>
-                                  <p className={styles.orderMeta}>{order.merchantName} ׳’ג‚¬ֲ¢ {order.customerName}</p>
+                                  <p className={styles.orderMeta}>{order.merchantName} • {order.customerName}</p>
                                 </div>
                                 <span className={styles.badge}>{deliveryStatusLabel[language][order.status]}</span>
                               </div>
@@ -1062,7 +1062,7 @@ function DeliveryWorkspace({
                                 {order.items.map((item) => (
                                   <article key={`${order.id}-${item.title}`} className={styles.itemSummaryCard}>
                                     {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className={styles.itemSummaryImage} loading="lazy" /> : null}
-                                    <p className={styles.detailText}>{item.title} ײ³ג€” {item.quantity} ׳’ג‚¬ֲ¢ {item.size} ׳’ג‚¬ֲ¢ {item.color}</p>
+                                    <p className={styles.detailText}>{item.title} × {item.quantity} • {item.size} • {item.color}</p>
                                   </article>
                                 ))}
                               </div>
@@ -1174,8 +1174,8 @@ function DeliveryWorkspace({
                 <header className={styles.detailSectionHeader}><h3>{text.orderSection}</h3></header>
                 <dl className={styles.detailList}>
                   <div><dt>{text.orderId}</dt><dd>{selectedOrder.id}</dd></div>
-                  <div><dt>{text.products}</dt><dd>{selectedOrder.items.map((item) => `${item.title} (${item.size} ׳’ג‚¬ֲ¢ ${item.color})`).join(" ׳’ג‚¬ֲ¢ ") || "-"}</dd></div>
-                  <div><dt>{text.quantities}</dt><dd>{selectedOrder.items.map((item) => `${item.quantity} ײ³ג€” ${item.unitPrice}`).join(" ׳’ג‚¬ֲ¢ ") || "-"}</dd></div>
+                  <div><dt>{text.products}</dt><dd>{selectedOrder.items.map((item) => `${item.title} (${item.size} • ${item.color})`).join(" • ") || "-"}</dd></div>
+                  <div><dt>{text.quantities}</dt><dd>{selectedOrder.items.map((item) => `${item.quantity} × ${item.unitPrice}`).join(" • ") || "-"}</dd></div>
                   <div><dt>{text.total}</dt><dd>{selectedOrder.total}</dd></div>
                   <div><dt>{text.payment}</dt><dd>{selectedOrder.paymentMethod}</dd></div>
                   <div><dt>{text.paymentStatus}</dt><dd>{selectedOrder.paymentStatus}</dd></div>
@@ -1398,7 +1398,7 @@ export default function BusinessPage() {
         try {
           await establishAdminApiSession(undefined, ADMIN_API_PASSWORD || undefined);
         } catch {
-          setNotice("׳´ֳ—ן¢ג€¦ ן¢ֲ׳´ֳ—׳´ֲ­ ן¢ג€ן¢ֻ†׳´ֲ­׳´ֲ© ׳´ֲ§ן¢ג€׳´ֳ—ן¢ֻ†׳´ֲµן¢ֲן¢ג€. ׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨׳´ֲ§׳´ֳ— ׳´ֳ—׳´ֲ¸ן¢ג€¡׳´ֲ± ׳´ֲ¨׳´ֲ¹׳´ֲ¯ ׳´ֲ±׳´ֲ¨׳´ֲ· ׳´ֲ¬ן¢ג€׳´ֲ³׳´ֲ© ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ³׳´ג‚×ן¢ֻ†ן¢ג€ ׳´ֲ¨׳´ֲ§ן¢ג€׳´ֲ®׳´ֲ§׳´ֲ¯ן¢ג€¦.");
+          setNotice("تم فتح لوحة التوصيل. الطلبات تظهر بعد ربط جلسة المسؤول بالخادم.");
         }
         return;
       }
@@ -1537,7 +1537,7 @@ export default function BusinessPage() {
               </button>
             </div>
             {notice ? <p className={styles.inlineNote}>{notice}</p> : null}
-            {accountType === "merchant" ? <a href={`https://wa.me/972548067553?text=${encodeURIComponent("ן¢ג€¦׳´ֲ±׳´ֲ­׳´ֲ¨ן¢ג€¹׳´ֲ§׳´ֲ ׳´ֲ£ן¢ג€ ׳´ֲ§ ן¢ג€¦ן¢ג€¡׳´ֳ—ן¢ג€¦ ׳´ֲ¨׳´ֲ§ן¢ג€׳´ֲ§ן¢ג€ ׳´ֲ¶ן¢ג€¦׳´ֲ§ן¢ג€¦ ׳´ֲ¥ן¢ג€ן¢ג€° BAMORA ן¢ֶ’׳´ֳ—׳´ֲ§׳´ֲ¬׳´ֲ±. ׳´ֲ£׳´ֲ±ן¢ֲ׳´ֲ¯ ן¢ג€¦׳´ֲ¹׳´ֲ±ן¢ֲ׳´ֲ© ׳´ֳ—ן¢ֲ׳´ֲ§׳´ֲµן¢ֲן¢ג€ ׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ³׳´ֲ¬ן¢ֲן¢ג€")}`} target="_blank" rel="noreferrer">{language === "ar" ? "׳´ֳ—ן¢ג€׳´ֲ¯ן¢ֲן¢ג€¦ ׳´ֲ·ן¢ג€׳´ֲ¨ ׳´ֲ§ן¢ג€ ׳´ֲ¶ן¢ג€¦׳´ֲ§ן¢ג€¦ ׳´ֳ—׳´ֲ§׳´ֲ¬׳´ֲ± ׳´ֲ¬׳´ֲ¯ן¢ֲ׳´ֲ¯" : "Apply as a new merchant"}</a> : null}
+            {accountType === "merchant" ? <a href={`https://wa.me/972548067553?text=${encodeURIComponent("مرحبًا، أنا مهتم بالانضمام إلى BAMORA كتاجر. أريد معرفة تفاصيل التسجيل")}`} target="_blank" rel="noreferrer">{language === "ar" ? "تقديم طلب انضمام تاجر جديد" : "Apply as a new merchant"}</a> : null}
           </section>
         </div>
       </div>
@@ -1590,7 +1590,7 @@ export default function BusinessPage() {
             <section className={styles.loginCard}>
               <h1>{text.deliveryTitle}</h1>
               <p role="status">{language === "ar"
-                ? "׳´ֲ¥׳´ֲ¯׳´ֲ§׳´ֲ±׳´ֲ© ן¢ג€¦ן¢ֻ†׳´ֲ¸ן¢ֲן¢ֲ ׳´ֲ§ן¢ג€׳´ֳ—ן¢ֻ†׳´ֲµן¢ֲן¢ג€ ן¢ֻ†׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ¹ן¢ֲן¢ֲן¢ג€  ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ­ן¢ג€ן¢ֲ ׳´ֳ·ן¢ֲ׳´ֲ± ן¢ג€¦׳´ֳ—׳´ֲ§׳´ֲ­׳´ֲ© ׳´ֲ¹ן¢ג€ן¢ג€° ׳´ֲ§ן¢ג€׳´ֲ¥ן¢ג€ ׳´ֳ—׳´ֲ§׳´ֲ¬. ן¢ֲן¢ג€׳´ֲ²ן¢ג€¦ ׳´ֳ—ן¢ג€ ן¢ֲן¢ֲ׳´ֲ° ׳´ֲµן¢ג€׳´ֲ§׳´ֲ­ן¢ֲ׳´ֲ§׳´ֳ— ׳´ֲ®׳´ֲ§׳´ֲ¯ן¢ג€¦ן¢ֲ׳´ֲ© ן¢ֻ†׳´ֲ³׳´ֲ¬ן¢ג€ ׳´ֳ—׳´ֲ¹ן¢ֲן¢ֲן¢ג€ ׳´ֲ§׳´ֳ— ׳´ֲ¯׳´ֲ§׳´ֲ¦ן¢ג€¦ ן¢ג€׳´ֲ¨ן¢ג€ ׳´ֲ§ן¢ג€׳´ֳ—׳´ֲ´׳´ֳ·ן¢ֲן¢ג€. ׳´ֲ±׳´ֲ§׳´ֲ¬׳´ֲ¹ ׳´ֲ§ן¢ג€׳´ֲ·ן¢ג€׳´ֲ¨׳´ֲ§׳´ֳ— ן¢ג€¦ן¢ג€  ן¢ג€ן¢ֻ†׳´ֲ­׳´ֲ© ׳´ֲ§ן¢ג€ן¢ג€¦׳´ֲ³׳´ג‚×ן¢ֻ†ן¢ג€."
+                ? "إدارة موظفي التوصيل والتعيين المحلي غير متاحة على الإنتاج. يلزم تنفيذ صلاحيات خادمية وسجل تعيينات دائم قبل التشغيل. راجع الطلبات من لوحة المسؤول."
                 : "Local staff management and delivery assignments are unavailable in production. Server-authorized staff access and persistent assignments are required. Review orders in the admin dashboard."}</p>
             </section>
           ) : <DeliveryWorkspace language={language} isAdminView={true} onLogout={handleLogout} />}
