@@ -1,5 +1,6 @@
 "use client";
 
+// Merchant login: clear conflicting role so merchant can always log in
 import { useEffect, useMemo, useState } from "react";
 import MerchantPage from "../../../merchant/src/app/page";
 import AdminPage from "../../../admin/src/app/page";
