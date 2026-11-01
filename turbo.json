@@ -3,6 +3,13 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "env": [
+        "NEXT_PUBLIC_BAMORA_API_URL",
+        "NEXT_PUBLIC_BAMORA_DATA_SOURCE",
+        "NEXT_PUBLIC_ENABLE_DEMO_MODE",
+        "NEXT_PUBLIC_PAYMENTS_ENABLED"
+      ],
+      "passThroughEnv": ["NEXT_PUBLIC_*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "dev": {

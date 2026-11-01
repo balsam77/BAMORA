@@ -8,3 +8,12 @@ dist
 *.log
 .DS_Store
 Thumbs.db
+
+# Build artifacts and local-only files
+*.tsbuildinfo
+out/
+uploads/
+.idea/
+*.backup
+apps/customer/android/
+ios/

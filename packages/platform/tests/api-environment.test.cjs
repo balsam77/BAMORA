@@ -36,3 +36,12 @@ test("production rejects HTTP and credential-bearing API URLs", () => {
     assert.throws(() => loadEnvironment({ NODE_ENV: "production", NEXT_PUBLIC_BAMORA_API_URL: url }).getApiBaseUrl());
   }
 });
+
+test("production never falls back to localhost in server or browser contexts", () => {
+  for (const window of [undefined, { location: { protocol: "http:", hostname: "localhost" } }]) {
+    assert.throws(() => loadEnvironment({ NODE_ENV: "production" }, window).getApiBaseUrl(), /missing/);
+  }
+  for (const url of ["https://localhost", "https://127.0.0.1", "https://[::1]"]) {
+    assert.throws(() => loadEnvironment({ NODE_ENV: "production", NEXT_PUBLIC_BAMORA_API_URL: url }).getApiBaseUrl());
+  }
+});

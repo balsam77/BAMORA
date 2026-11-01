@@ -7,6 +7,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { Request, Response } from "express";
+import { databaseFailureDetails, databaseFailureMessage } from "../../prisma/database-diagnostics";
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -17,16 +18,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const databaseFailure = databaseFailureDetails(exception);
+    const status = exception instanceof HttpException
+      ? exception.getStatus()
+      : databaseFailure?.unavailable ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const message =
       exception instanceof HttpException
         ? exception.getResponse()
-        : "Internal server error";
+        : databaseFailure?.unavailable ? "Database is unavailable or its schema is incompatible." : "Internal server error";
 
     this.logger.error(
-      `${request.method} ${request.url} -> ${status}`,
-      exception instanceof Error ? exception.stack : undefined,
+      `${request.method} ${request.path} -> ${status}; ${
+        databaseFailure ? databaseFailureMessage(exception) :
+        exception instanceof HttpException ? "HTTP exception" : "Unhandled application error; details withheld."
+      }`,
     );
 
     response.status(status).json({

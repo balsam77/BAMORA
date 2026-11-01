@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, timingSafeEqual } from "crypto";
 import {
   AdminLoginDto,
   LoginDto,
@@ -140,18 +140,19 @@ export class AuthService {
       throw new BadRequestException("Email is already registered.");
     }
 
-    const nameParts = dto.name.trim().split(/\s+/);
+    const nameParts = dto.name?.trim().split(/\s+/) ?? [];
     const firstName = nameParts[0] ?? "";
     const lastName = nameParts.slice(1).join(" ") || undefined;
 
     const created = await this.authRepository.createUser({
   email: dto.email.toLowerCase(),
   phone: dto.phone,
-  passwordHash: this.hashValue(dto.password),
+  passwordHash: await bcrypt.hash(dto.password, 12),
   role: this.roleToDb(dto.role ?? "customer"),
   firstName,
   lastName,
   businessName: dto.name,
+  marketingEnabled: dto.marketingEnabled === true,
 });
 
     return this.createSessionTokens(created, userAgent, ipAddress);
@@ -202,7 +203,9 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials.");
     }
 
-    const matched = await bcrypt.compare(dto.password, user.passwordHash);
+    const matched = /^[a-f0-9]{64}$/.test(user.passwordHash)
+      ? timingSafeEqual(Buffer.from(this.hashValue(dto.password), "hex"), Buffer.from(user.passwordHash, "hex"))
+      : await bcrypt.compare(dto.password, user.passwordHash);
     if (!matched) {
       throw new UnauthorizedException("Invalid credentials.");
     }

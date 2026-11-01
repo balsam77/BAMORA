@@ -25,9 +25,9 @@ export default function TermsPage() {
           heading: { ar: "2) التسجيل والحساب", he: "2) הרשמה וחשבון", en: "2) Registration and account" },
           paragraphs: [
             {
-              ar: "المستخدم مسؤول عن صحة بياناته وسرية معلومات الدخول، وأي نشاط يتم من خلال حسابه يُنسب إليه ما لم يُثبت خلاف ذلك.",
-              he: "המשתמש אחראי לנכונות פרטיו ולשמירת פרטי הגישה; כל פעילות מחשבונו תיוחס אליו אלא אם הוכח אחרת.",
-              en: "Users are responsible for accurate information and safeguarding credentials; account activity is attributed to the account owner unless proven otherwise.",
+              ar: "التصفح والشراء متاحان كزائر، وإنشاء الحساب اختياري. الاسم وحده ليس وسيلة للدخول إلى حساب محمي. المستخدم مسؤول عن صحة بيانات الطلب وسرية معلومات الدخول إن اختار حسابًا.",
+              he: "ניתן לגלוש ולרכוש כאורח, ויצירת חשבון היא אופציונלית. שם בלבד אינו מאפשר כניסה לחשבון מוגן. המשתמש אחראי לנכונות פרטי ההזמנה ולשמירת פרטי הגישה אם בחר לפתוח חשבון.",
+              en: "Browsing and purchase are available to guests; accounts are optional. A name alone does not authenticate a protected account. Users are responsible for accurate order information and, if they choose an account, safeguarding its credentials.",
             },
           ],
         },

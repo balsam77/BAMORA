@@ -11,6 +11,7 @@
     "test": "pnpm build && node --test tests/*.test.cjs",
     "db:generate": "node scripts/prisma-offline.cjs generate",
     "db:validate": "node scripts/prisma-offline.cjs validate",
+    "db:diagnose": "node scripts/diagnose-database.cjs",
     "db:migration:check": "node scripts/prisma-offline.cjs check",
     "db:migrate:deploy": "node scripts/migrate-production.cjs",
     "db:migrate": "prisma migrate dev",

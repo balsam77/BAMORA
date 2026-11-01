@@ -1,3 +1,5 @@
+const { createRequire } = require("node:module");
+
 function validateWebEnvironment(env) {
   const configured = env.NEXT_PUBLIC_BAMORA_API_URL?.trim();
   if (!configured) {
@@ -21,11 +23,23 @@ function validateWebEnvironment(env) {
   }
 }
 
-module.exports = { validateWebEnvironment };
+function validateWebBuild(projectDirectory = process.cwd()) {
+  const nextRequire = createRequire(require.resolve("next/package.json", { paths: [projectDirectory] }));
+  const { loadEnvConfig } = nextRequire("@next/env");
+  loadEnvConfig(projectDirectory, false, {
+    info() {},
+    error() {
+      throw new Error("Unable to load web environment files; check their format and permissions.");
+    },
+  });
+  validateWebEnvironment(process.env);
+}
+
+module.exports = { validateWebEnvironment, validateWebBuild };
 
 if (require.main === module) {
   try {
-    validateWebEnvironment(process.env);
+    validateWebBuild();
     console.log("Web deployment environment validated (no secret values displayed).");
   } catch (error) {
     // URL parser errors can contain the input; only emit our own validation messages.

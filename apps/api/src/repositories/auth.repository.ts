@@ -42,6 +42,7 @@ export class AuthRepository {
     phone?: string;
     nationalIdHash?: string;
     nationalIdLast3?: string;
+    marketingEnabled?: boolean;
   }) {
     return this.prisma.user.create({
       data: {
@@ -51,6 +52,12 @@ export class AuthRepository {
         nationalIdHash: input.nationalIdHash,
         nationalIdLast3: input.nationalIdLast3,
         role: input.role,
+        settings: input.role === "CUSTOMER" ? {
+          create: {
+            marketingEnabled: input.marketingEnabled === true,
+            marketingConsentAt: input.marketingEnabled === true ? new Date() : null,
+          },
+        } : undefined,
         customer:
           input.role === "CUSTOMER"
             ? {

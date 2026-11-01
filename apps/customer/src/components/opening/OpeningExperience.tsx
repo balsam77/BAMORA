@@ -232,7 +232,7 @@ const currentPort = Number(url.port || "0");
   }, []);
 
   const advanceToAccount = useCallback(() => {
-    setStage("account");
+    setStage("home");
   }, []);
 
   const advanceToSelection = useCallback(() => {

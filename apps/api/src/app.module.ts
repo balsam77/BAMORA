@@ -21,6 +21,7 @@ import { AuthRepository } from "./repositories/auth.repository";
 import { CommerceRepository } from "./repositories/commerce.repository";
 import { CommerceService } from "./services/commerce.service";
 import { getJwtSecret } from "./common/deployment-config";
+import { startupStep } from "./common/startup-diagnostics";
 
 @Module({
   imports: [
@@ -28,10 +29,10 @@ import { getJwtSecret } from "./common/deployment-config";
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: getJwtSecret({
+        secret: startupStep("jwt-initialization", () => getJwtSecret({
           NODE_ENV: process.env.NODE_ENV,
           JWT_SECRET: configService.get<string>("JWT_SECRET"),
-        }),
+        })),
       }),
     }),
   ],

@@ -1,21 +1,27 @@
-import { IsEmail, IsIn, IsOptional, IsString, Length, Matches } from "class-validator";
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length, Matches } from "class-validator";
 
 type Role = "customer" | "merchant" | "super-admin";
 
 export class SignupDto {
+  @IsOptional()
   @IsString()
   @Length(2, 80)
-  name!: string;
+  name?: string;
 
   @IsEmail()
   email!: string;
 
+  @IsOptional()
   @IsString()
   @Length(7, 32)
-  phone!: string;
+  phone?: string;
   @IsString()
   @Length(6, 128)
   password!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  marketingEnabled?: boolean;
 
   @IsOptional()
   @IsIn(["customer", "merchant", "super-admin"])

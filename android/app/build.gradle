@@ -1,8 +1,21 @@
 apply plugin: 'com.android.application'
 
+def bamoraUploadStoreFile = findProperty('BAMORA_UPLOAD_STORE_FILE')
+def bamoraUploadKeyAlias = findProperty('BAMORA_UPLOAD_KEY_ALIAS')
+def bamoraUploadStorePassword = findProperty('BAMORA_UPLOAD_STORE_PASSWORD')
+def bamoraUploadKeyPassword = findProperty('BAMORA_UPLOAD_KEY_PASSWORD')
+
 android {
     namespace = "com.bamora.app"
     compileSdk = rootProject.ext.compileSdkVersion
+    signingConfigs {
+        release {
+            storeFile bamoraUploadStoreFile ? file(bamoraUploadStoreFile) : null
+            keyAlias bamoraUploadKeyAlias
+            storePassword bamoraUploadStorePassword
+            keyPassword bamoraUploadKeyPassword
+        }
+    }
     defaultConfig {
         applicationId "com.bamora.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -18,6 +31,7 @@ android {
     }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

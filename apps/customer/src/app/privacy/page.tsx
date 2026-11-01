@@ -15,9 +15,9 @@ export default function PrivacyPage() {
           heading: { ar: "البيانات التي نجمعها", he: "אילו נתונים אנו אוספים", en: "Data we collect" },
           paragraphs: [
             {
-              ar: "قد تشمل البيانات: معلومات الحساب، بيانات الطلبات، وسجلات التواصل عبر النماذج أو قنوات الدعم.",
-              he: "הנתונים עשויים לכלול: פרטי חשבון, נתוני הזמנות ורשומות תקשורת דרך טפסים או ערוצי תמיכה.",
-              en: "Data may include account details, order data, and communication records through forms or support channels.",
+              ar: "التصفح والبحث لا يتطلبان حسابًا. الحساب اختياري بالبريد وكلمة المرور؛ نطلب الاسم عند التفاعل، والاسم وهاتف التوصيل والعنوان عند الطلب. بريد الرد على رسالة الدعم اختياري.",
+              he: "גלישה וחיפוש אינם דורשים חשבון. חשבון עם אימייל וסיסמה הוא אופציונלי; שם נדרש בעת אינטראקציה, ושם, טלפון וכתובת למסירה בעת הזמנה. אימייל לתשובה לפניית תמיכה הוא אופציונלי.",
+              en: "Browsing and search require no account. An email/password account is optional; we request a name for interactions and recipient name, phone and address for delivery. A support reply email is optional.",
             },
           ],
         },
@@ -30,6 +30,14 @@ export default function PrivacyPage() {
               en: "Data is used to operate the platform, process orders, improve experience, and respond to support requests.",
             },
           ],
+        },
+        {
+          heading: { ar: "موافقة رسائل العروض", he: "הסכמה להודעות שיווק", en: "Marketing consent" },
+          paragraphs: [{
+            ar: "رسائل العروض اختيارية ولا تُفعّل تلقائيًا عند التسجيل أو الشراء. يمكنك الاشتراك بموافقة صريحة وإلغاء الاشتراك من إعدادات الحساب؛ رسائل خدمة الطلبات منفصلة.",
+            he: "הודעות שיווק הן אופציונליות ואינן מופעלות אוטומטית בהרשמה או ברכישה. ניתן להצטרף בהסכמה מפורשת ולבטל בהגדרות החשבון; הודעות שירות להזמנות נפרדות.",
+            en: "Marketing messages are optional and are not enabled automatically on signup or purchase. Opt in explicitly and unsubscribe in account settings; order-service messages are separate.",
+          }],
         },
         {
           heading: { ar: "حفظ البيانات", he: "שמירת נתונים", en: "Data retention" },

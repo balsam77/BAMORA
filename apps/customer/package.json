@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "next build",
+    "build": "node ../../scripts/validate-web-env.cjs && next build",
     "start": "next start --port 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
@@ -13,8 +13,9 @@
     "@bamora/platform": "workspace:*",
     "@bamora/ui": "workspace:*",
     "@capacitor/android": "^8.5.0",
-    "@capacitor/core": "^8.5.0",
     "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.3",
     "next": "^15.3.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

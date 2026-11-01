@@ -155,6 +155,48 @@
   font-size: 0.95rem;
 }
 
+.emptyCatalog {
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  min-height: 15rem;
+  padding: clamp(1.5rem, 4vw, 2.75rem);
+  border: 1px solid rgba(201, 169, 98, 0.3);
+  border-radius: var(--bamora-radius-xl);
+  background:
+    radial-gradient(ellipse at top, rgba(201, 169, 98, 0.12), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+  text-align: center;
+  align-content: center;
+  box-shadow: var(--bamora-shadow-soft);
+}
+
+.emptyCatalogMark {
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 1px solid rgba(201, 169, 98, 0.35);
+  border-radius: 50%;
+  color: var(--bamora-gold);
+  font-size: 1.2rem;
+}
+
+.emptyCatalog h2 {
+  margin: 0;
+  color: var(--bamora-white);
+  font-family: var(--bamora-font-display);
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.emptyCatalog p:last-child {
+  max-width: 38rem;
+  margin: 0;
+  color: var(--bamora-soft-white);
+  line-height: 1.8;
+  opacity: 0.88;
+}
+
 .tileGrid,
 .shopGrid,
 .productGrid,
