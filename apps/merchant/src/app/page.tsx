@@ -521,7 +521,7 @@ function MerchantPageContent() {
               <input
                 className={styles.inputField}
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
+                accept="image/png,image/jpeg,image/jpg,image/webp,image/heic,image/heif,.heic,.heif"
                 disabled={uploadingImage}
                 onChange={(event) => {
                   const file = event.target.files?.[0] ?? null;
