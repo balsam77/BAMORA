@@ -181,6 +181,15 @@ function MerchantPageContent() {
     const savedRole = getCurrentRole();
     const savedName = window.localStorage.getItem(MERCHANT_NAME_KEY) ?? "";
 
+    // If another role (e.g. super-admin) is saved, clear it so merchant can log in
+    if (savedRole && savedRole !== "merchant") {
+      clearRoleSession();
+      setRole(null);
+      setMerchantName("");
+      setReady(true);
+      return;
+    }
+
     setRole(savedRole);
     setMerchantName(savedName);
 
