@@ -870,10 +870,21 @@ async function apiRequest<T>(path: string, init: RequestInit = {}, options: ApiR
     headers.set("authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(apiUrl(path), {
-    ...init,
-    headers,
-  });
+  // Retry once on network failure or 5xx (Render Free cold start)
+  let response: Response;
+  try {
+    response = await fetch(apiUrl(path), { ...init, headers });
+  } catch {
+    // Wait 2s and retry once — handles Render Free waking from sleep
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    response = await fetch(apiUrl(path), { ...init, headers });
+  }
+
+  if (!response.ok && response.status >= 500) {
+    // Server error — wait and retry once
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    response = await fetch(apiUrl(path), { ...init, headers });
+  }
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
