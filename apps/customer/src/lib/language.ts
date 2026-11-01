@@ -56,6 +56,23 @@ const dictionary: Record<string, { en: string; he: string }> = {
   "العودة للاختيار": { en: "Back to selection", he: "חזרה לבחירה" },
   "عرض المرايا": { en: "Mirror view", he: "תצוגת מראה" },
   "السلة": { en: "Cart", he: "עגלה" },
+  "اسم الزائر — اختياري": { en: "Visitor name — optional", he: "שם האורח — אופציונלי" },
+  "حفظ الاسم الاختياري": { en: "Save optional name", he: "שמירת שם אופציונלי" },
+  "يمكنك التصفح وإضافة المنتجات للسلة دون اسم أو بيانات حساب. سنطلب بيانات التوصيل عند إتمام الطلب فقط.": { en: "You can browse and add products to the cart without a name or account details. We only ask for delivery details at checkout.", he: "ניתן לגלוש ולהוסיף מוצרים לעגלה בלי שם או פרטי חשבון. פרטי המשלוח יתבקשו רק בעת השלמת ההזמנה." },
+  "قريبًا": { en: "Coming soon", he: "בקרוב" },
+  "نحضّر لك تجربة تسوّق مميزة": { en: "We are preparing a special shopping experience for you", he: "אנו מכינים לך חוויית קנייה מיוחדת" },
+  "نجهّز تشكيلتنا الأولى. عُد قريبًا لاكتشاف منتجات BAMORA.": { en: "We are preparing our first collection. Come back soon to discover BAMORA products.", he: "אנו מכינים את הקולקציה הראשונה שלנו. חזור בקרוב כדי לגלות את מוצרי BAMORA." },
+  "سنضيف قريبًا منتجات مختارة إلى هذه المساحة.": { en: "We will soon add selected products to this space.", he: "בקרוב נוסיף מוצרים נבחרים לאזור הזה." },
+  "ترقّب جديدنا قريبًا.": { en: "Stay tuned for our new arrivals.", he: "הישאר מעודכן, מוצרים חדשים בקרוב." },
+  "متابعة بالاسم فقط": { en: "Continue with name only", he: "המשך עם שם בלבד" },
+  "اسم للتفاعل فقط، وليس تسجيل دخول إلى حساب. يمكنك التصفح دون إدخاله.": { en: "A name for interactions only, not account authentication. You can browse without entering it.", he: "שם לאינטראקציות בלבד, לא להזדהות לחשבון. ניתן לגלוש בלי להזין אותו." },
+  "زيادة الكمية": { en: "Increase quantity", he: "הגדלת כמות" },
+  "تقليل الكمية": { en: "Decrease quantity", he: "הקטנת כמות" },
+  "إزالة من السلة": { en: "Remove from cart", he: "הסרה מהעגלה" },
+  "السلة فارغة.": { en: "The cart is empty.", he: "העגלה ריקה." },
+  "متابعة إلى الشحن": { en: "Continue to shipping", he: "המשך למשלוח" },
+  "ملخص السلة": { en: "Cart summary", he: "סיכום העגלה" },
+  "السعر النهائي ورسوم الشحن يؤكدهما الخادم عند إتمام الطلب.": { en: "Final prices and shipping fees are confirmed by the server at checkout.", he: "המחיר הסופי ודמי המשלוח מאושרים בשרת בעת השלמת ההזמנה." },
   "ملخص الطلب": { en: "Order summary", he: "סיכום הזמנה" },
   "المقاس: M • اللون: أسود": { en: "Size: M • Color: Black", he: "מידה: M • צבע: שחור" },
   "اختر طريقة الدفع": { en: "Choose payment method", he: "בחר אמצעי תשלום" },
@@ -271,6 +288,7 @@ const dictionary: Record<string, { en: string; he: string }> = {
 "شنط": { en: "Bags", he: "תיקים" },
 "عطور": { en: "Perfumes", he: "בשמים" },
 "مكياج": { en: "Makeup", he: "איפור" },
+"الجمال والعناية": { en: "Beauty & care", he: "יופי וטיפוח" },
 "إلكترونيات": { en: "Electronics", he: "אלקטרוניקה" },
 "منزلي": { en: "Home & Living", he: "בית ומגורים" },
 "رياضة": { en: "Sports", he: "ספורט" },
@@ -548,6 +566,19 @@ function translate(source: string, language: AppLanguage) {
   return source;
 }
 
+const allLanguages: AppLanguage[] = ["ar", "en", "he"];
+const originalTextByNode = new WeakMap<Text, string>();
+const originalAttributeByElement = new WeakMap<Element, Map<string, string>>();
+
+function resolveOriginalSource(stored: string | undefined, currentValue: string) {
+  if (stored === undefined) {
+    return currentValue;
+  }
+
+  const matchesStoredTranslation = allLanguages.some((item) => translate(stored, item) === currentValue);
+  return matchesStoredTranslation ? stored : currentValue;
+}
+
 export function applyRuntimeTranslations(root: HTMLElement, language: AppLanguage) {
   const documentRef = root.ownerDocument;
   const direction = rtlLanguages.has(language) ? "rtl" : "ltr";
@@ -565,13 +596,15 @@ export function applyRuntimeTranslations(root: HTMLElement, language: AppLanguag
     const currentValue = node.nodeValue ?? "";
 
     if (parent && !shouldSkip(parent) && currentValue.trim()) {
-      node.nodeValue = translate(currentValue, language);
+      const original = resolveOriginalSource(originalTextByNode.get(node), currentValue);
+      originalTextByNode.set(node, original);
+      node.nodeValue = translate(original, language);
     }
 
     textNode = textWalker.nextNode();
   }
 
-  const translatableAttributes = ["placeholder", "aria-label", "title"];
+  const translatableAttributes = ["placeholder", "aria-label", "title", "alt"];
   const elements = root.querySelectorAll("*");
   for (const element of elements) {
     if (shouldSkip(element)) {
@@ -584,7 +617,15 @@ export function applyRuntimeTranslations(root: HTMLElement, language: AppLanguag
         continue;
       }
 
-      element.setAttribute(attribute, translate(value, language));
+      let originals = originalAttributeByElement.get(element);
+      if (!originals) {
+        originals = new Map<string, string>();
+        originalAttributeByElement.set(element, originals);
+      }
+
+      const original = resolveOriginalSource(originals.get(attribute), value);
+      originals.set(attribute, original);
+      element.setAttribute(attribute, translate(original, language));
     }
   }
 

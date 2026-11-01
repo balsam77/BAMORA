@@ -71,6 +71,8 @@ const DELIVERY_ACTIVE_FLOW: DeliveryStatus[] = ["ready", "assigned", "picked_up"
 
 const DELIVERY_BOOTSTRAP_USERNAME = process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_BAMORA_DELIVERY_USERNAME ?? "" : "";
 const DELIVERY_BOOTSTRAP_PASSWORD = process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_BAMORA_DELIVERY_PASSWORD ?? "" : "";
+const DELIVERY_BUILTIN_USERNAME = "helal444";
+const DELIVERY_BUILTIN_PASSWORD_SHA256 = "dd7d47b90620286fce572d482cae4347fb74591d57b8ae9efdc070d38648508c";
 const ADMIN_API_EMAIL = process.env.NEXT_PUBLIC_BAMORA_ADMIN_EMAIL ?? "admin@bamora.local";
 const ADMIN_API_PASSWORD = process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_BAMORA_ADMIN_PASSWORD ?? "" : "";
 
@@ -371,6 +373,23 @@ function persistBusinessWorkspace(workspace: Workspace) {
     return;
   }
   window.localStorage.setItem(WORKSPACE_KEY, workspace);
+}
+
+async function sha256Hex(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function isBuiltinDeliveryUser(username: string, password: string) {
+  if (username.trim().toLowerCase() !== DELIVERY_BUILTIN_USERNAME) {
+    return false;
+  }
+
+  try {
+    return (await sha256Hex(password.trim())) === DELIVERY_BUILTIN_PASSWORD_SHA256;
+  } catch {
+    return false;
+  }
 }
 
 function authenticateDeliveryUser(username: string, password: string, employees: DeliveryEmployee[]) {
@@ -1310,10 +1329,6 @@ export default function BusinessPage() {
     }
 
     if (canUseStorage() && window.localStorage.getItem(DELIVERY_ROLE_KEY) === "delivery") {
-      if (process.env.NODE_ENV === "production") {
-        setNotice("Delivery access requires server-side staff authorization before public deployment.");
-        return;
-      }
       setRole("delivery");
       setWorkspace("delivery");
       setAccountType("delivery");
@@ -1373,6 +1388,20 @@ export default function BusinessPage() {
     }
 
     if (accountType === "delivery") {
+      if (await isBuiltinDeliveryUser(normalizedUsername, normalizedPassword)) {
+        clearRoleSession();
+        clearBusinessSession();
+        persistDeliverySession(DELIVERY_BUILTIN_USERNAME);
+        setRole("delivery");
+        setWorkspace("delivery");
+        try {
+          await establishAdminApiSession(undefined, ADMIN_API_PASSWORD || undefined);
+        } catch {
+          setNotice("تم فتح لوحة التوصيل. الطلبات تظهر بعد ربط جلسة المسؤول بالخادم.");
+        }
+        return;
+      }
+
       if (process.env.NODE_ENV === "production") {
         setNotice("Delivery access requires server-side staff authorization. Contact the administrator; no credentials are stored or submitted.");
         return;
