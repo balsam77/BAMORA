@@ -229,6 +229,7 @@ function MerchantPageContent() {
       if (registering) {
         if (!businessName.trim() || !phone || !/^\d{6,20}$/.test(nationalId)) {
           setLoginNotice("أكمل اسم المتجر والهاتف ورقم الهوية الصحيح.");
+          setAuthBusy(false);
           return;
         }
         await merchantRepository.registerApplication({
@@ -238,6 +239,7 @@ function MerchantPageContent() {
         setNationalId("");
         setRegistering(false);
         setLoginNotice("تم إرسال طلب الانضمام. انتظر موافقة المسؤول ثم ادخل بكلمة المرور التي اخترتها.");
+        setAuthBusy(false);
         return;
       }
       const session = await merchantRepository.login({
