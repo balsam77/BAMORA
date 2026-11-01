@@ -414,44 +414,48 @@ function MerchantPageContent() {
   }
 
   if (role !== "merchant") {
+    const whatsappUrl = `https://wa.me/972548067553?text=${encodeURIComponent("طلب انضمام تاجر BAMORA\n\nاسم المتجر:\nالبريد الإلكتروني:\nرقم الهاتف:\nرقم الهوية:")}`;
     return (
       <div className={styles.loginShell}>
         <section className={styles.loginCard}>
           <p className={styles.brand}>BAMORA</p>
           <h1>{registering ? "طلب انضمام تاجر" : "بوابة التاجر"}</h1>
-          <p>أدخل بيانات التاجر للدخول إلى لوحة التحكم.</p>
-          {registering && <>
-            <input className={styles.inputField} placeholder="اسم المتجر" value={businessName} onChange={(event) => setBusinessName(event.target.value)} />
-            <input className={styles.inputField} placeholder="رقم الهوية" value={nationalId} onChange={(event) => setNationalId(event.target.value)} />
-          </>}
-          <input
-            type="email"
-            className={styles.inputField}
-            placeholder="البريد الإلكتروني"
-            value={merchantEmail}
-            onChange={(event) => setMerchantEmail(event.target.value)}
-          />
-          {registering && <input
-            type="text"
-            className={styles.inputField}
-            placeholder="رقم الهاتف"
-            value={merchantPhone}
-            onChange={(event) => setMerchantPhone(event.target.value)}
-          />}
-          <input
-            type="password"
-            className={styles.inputField}
-            placeholder="كلمة مرور من 12 إلى 64 حرفًا"
-            autoComplete={registering ? "new-password" : "current-password"}
-            value={merchantPassword}
-            onChange={(event) => setMerchantPassword(event.target.value)}
-          />
-          <button type="button" className={styles.primaryButton} disabled={authBusy} onClick={loginAsMerchant}>
-            {authBusy ? "جارٍ المعالجة..." : registering ? "إرسال طلب الانضمام" : "دخول لوحة التاجر"}
-          </button>
-          <button type="button" className={styles.primaryButton} disabled={authBusy} onClick={() => { setRegistering(!registering); setMerchantPassword(""); setLoginNotice(""); }}>
-            {registering ? "لدي حساب — تسجيل الدخول" : "تقديم طلب انضمام جديد"}
-          </button>
+          {registering ? (
+            <>
+              <p>أرسل طلب الانضمام عبر واتساب وسنسجّلك ونوافق عليك.</p>
+              <a href={whatsappUrl} target="_blank" rel="noreferrer" className={styles.primaryButton} style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
+                إرسال طلب الانضمام عبر واتساب
+              </a>
+              <button type="button" className={styles.primaryButton} onClick={() => { setRegistering(false); setLoginNotice(""); }}>
+                لدي حساب — تسجيل الدخول
+              </button>
+            </>
+          ) : (
+            <>
+              <p>أدخل بيانات التاجر للدخول إلى لوحة التحكم.</p>
+              <input
+                type="email"
+                className={styles.inputField}
+                placeholder="البريد الإلكتروني"
+                value={merchantEmail}
+                onChange={(event) => setMerchantEmail(event.target.value)}
+              />
+              <input
+                type="password"
+                className={styles.inputField}
+                placeholder="كلمة مرور من 12 إلى 64 حرفًا"
+                autoComplete="current-password"
+                value={merchantPassword}
+                onChange={(event) => setMerchantPassword(event.target.value)}
+              />
+              <button type="button" className={styles.primaryButton} disabled={authBusy} onClick={loginAsMerchant}>
+                {authBusy ? "جارٍ المعالجة..." : "دخول لوحة التاجر"}
+              </button>
+              <button type="button" className={styles.primaryButton} disabled={authBusy} onClick={() => { setRegistering(true); setMerchantPassword(""); setLoginNotice(""); }}>
+                تقديم طلب انضمام جديد
+              </button>
+            </>
+          )}
           {loginNotice ? <p className={styles.inlineNote}>{loginNotice}</p> : null}
         </section>
       </div>
