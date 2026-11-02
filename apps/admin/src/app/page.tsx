@@ -916,7 +916,12 @@ function AdminPageContent() {
               <input className={styles.inputField} type="text" placeholder="اسم القسم بالعربية" value={categoryForm.nameAr} onChange={(event) => setCategoryForm((current) => ({ ...current, nameAr: event.target.value }))} />
               <input className={styles.inputField} type="text" placeholder="Category slug" value={categoryForm.slug} onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))} />
               <input className={styles.inputField} type="text" placeholder="الأيقونة (Emoji)" value={categoryForm.icon} onChange={(event) => setCategoryForm((current) => ({ ...current, icon: event.target.value }))} />
-              <input className={styles.inputField} type="text" placeholder="Parent ID (اختياري)" value={categoryForm.parentId} onChange={(event) => setCategoryForm((current) => ({ ...current, parentId: event.target.value }))} />
+              <select aria-label="القسم الرئيسي (اختياري)" className={styles.inputField} value={categoryForm.parentId} onChange={(event) => setCategoryForm((current) => ({ ...current, parentId: event.target.value }))}>
+                <option value="">قسم رئيسي (بدون أب)</option>
+                {categories.filter((category) => !category.parentId && category.id !== categoryForm.id).map((category) => (
+                  <option key={category.id} value={category.id}>{category.icon} {category.nameAr}</option>
+                ))}
+              </select>
             </div>
             <div className={styles.actionRow}>
               <button type="button" className={styles.primaryButton} onClick={saveCategory}>إضافة/حفظ قسم</button>
@@ -939,7 +944,7 @@ function AdminPageContent() {
                     <tr key={category.id}>
                       <td>{category.icon} {category.nameAr}</td>
                       <td>{category.slug}</td>
-                      <td>{category.parentId ?? "-"}</td>
+                      <td>{category.parentId ? (categories.find((parent) => parent.id === category.parentId)?.nameAr ?? category.parentId) : "-"}</td>
                       <td className={styles.actionsCell}>
                         <button type="button" className={styles.tableButton} onClick={() => editCategory(category)}>تحميل للتعديل</button>
                       </td>
