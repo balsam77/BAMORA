@@ -119,93 +119,93 @@ async function establishAdminApiSession(preferredEmail?: string, preferredPasswo
 const copy = {
   ar: {
     appTitle: "BAMORA Business",
-    pickRoleTitle: "״§״®״×״§״± †ˆ״¹ ״§„״¯״®ˆ„",
-    pickRoleSubtitle: "״§״®״×״± †ˆ״¹ ״§„״­״³״§״¨ ״£ˆ„‹״§״ ״«… ״³״¬„ ״§„״¯״®ˆ„ ״¨״µ״÷״© ‡״°״§ ״§„†ˆ״¹ ‚״·.",
+    pickRoleTitle: "اختيار نوع الدخول",
+    pickRoleSubtitle: "اختر نوع الحساب أولًا، ثم سجل الدخول بصيغة هذا النوع فقط.",
     chooseDelivery: "Delivery",
     chooseMerchant: "Merchant",
     chooseAdmin: "Super Admin",
-    continueToLogin: "…״×״§״¨״¹״© ״×״³״¬„ ״§„״¯״®ˆ„",
-    backToRoleSelect: "״§„״¹ˆ״¯״© „״§״®״×״§״± ״§„†ˆ״¹",
-    username: "״§״³… ״§„…״³״×״®״¯…",
-    email: "״§„״¨״±״¯ ״§„״¥„ƒ״×״±ˆ†",
-    loginNumber: "״±‚… ״×״³״¬„ ״§„״¯״®ˆ„",
-    password: "ƒ„…״© ״§„…״±ˆ״±",
-    phone: "״±‚… ״§„‡״§״×",
-    login: "״×״³״¬„ ״§„״¯״®ˆ„",
-    logout: "״×״³״¬„ ״§„״®״±ˆ״¬",
-    accessDenied: "״¨״§†״§״× ״§„״¯״®ˆ„ ״÷״± ״µ״­״­״©.",
-    roleNotAllowed: "†ˆ״¹ ״§„״­״³״§״¨ ״§„״­״§„ ״÷״± …״³…ˆ״­ „‡ ״¨‡״°‡ ״§„״µ״­״©.",
-    deliveryTitle: "…״±ƒ״² ״§„״×ˆ״µ„",
-    deliverySubtitle: "„ˆ״­״© ״³״±״¹״© „…ˆ״¸ ״´״±ƒ״© ״§„״×ˆ״µ„: …†״§״·‚״ ״×״¹†״ ״­״§„״§״×״ ˆ״§״×״µ״§„ …״¨״§״´״±.",
-    noOrders: "„״§ ״×ˆ״¬״¯ ״·„״¨״§״× …״·״§״¨‚״© ״­״§„‹״§.",
-    readyNow: "״¬״§‡״² „„״×ˆ״µ„ ״§„״¢†",
-    assignedToEmployee: "…״¹‘†״© „…†״¯ˆ״¨",
-    pickedUp: "״×… ״§„״§״³״×„״§…",
-    outForDelivery: "״®״±״¬״× „„״×ˆ״µ„",
-    delivered: "״×… ״§„״×״³„…",
-    todayOrders: "״·„״¨״§״× ״§„ˆ…",
-    region: "״§„…†״·‚״©",
-    allRegions: "ƒ„ ״§„…†״§״·‚",
-    storeName: "״§״³… ״§„…״­„",
-    customerName: "״§״³… ״§„״²״¨ˆ†",
-    status: "״§„״­״§„״©",
-    allEmployees: "ƒ„ ״§„…ˆ״¸†",
-    unassigned: "״÷״± …״¹‘†",
-    date: "״§„״×״§״±״®",
-    search: "״¨״­״« ״¨״§„״·„״¨ ״£ˆ ״§„…״­„ ״£ˆ ״§„״²״¨ˆ†",
-    orderId: "״±‚… ״§„״·„״¨",
-    orderDetails: "״×״§״µ„ ״§„״·„״¨",
+    continueToLogin: "متابعة تسجيل الدخول",
+    backToRoleSelect: "العودة لاختيار النوع",
+    username: "اسم المستخدم",
+    email: "البريد الإلكتروني",
+    loginNumber: "رقم تسجيل الدخول",
+    password: "كلمة المرور",
+    phone: "رقم الهاتف",
+    login: "تسجيل الدخول",
+    logout: "تسجيل الخروج",
+    accessDenied: "بيانات الدخول غير صحيحة.",
+    roleNotAllowed: "نوع الحساب الحالي غير مسموح له بهذه الصفحة.",
+    deliveryTitle: "مركز التوصيل",
+    deliverySubtitle: "لوحة سريعة لموظفي شركة التوصيل: مناطق، تعيين، حالات، واتصال مباشر.",
+    noOrders: "لا توجد طلبات مطابقة حاليًا.",
+    readyNow: "جاهز للتوصيل الآن",
+    assignedToEmployee: "مُعيّنة لمندوب",
+    pickedUp: "تم الاستلام",
+    outForDelivery: "خرجت للتوصيل",
+    delivered: "تم التسليم",
+    todayOrders: "طلبات اليوم",
+    region: "المنطقة",
+    allRegions: "كل المناطق",
+    storeName: "اسم المحل",
+    customerName: "اسم الزبون",
+    status: "الحالة",
+    allEmployees: "كل الموظفين",
+    unassigned: "غير معيّن",
+    date: "التاريخ",
+    search: "بحث بالطلب أو المحل أو الزبون",
+    orderId: "رقم الطلب",
+    orderDetails: "تفاصيل الطلب",
     shopSection: "SHOP",
     customerSection: "CUSTOMER",
     orderSection: "ORDER",
-    shopOwner: "…״³״₪ˆ„ ״§„…״­„",
-    phoneLabel: "״§„‡״§״×",
-    address: "״§„״¹†ˆ״§†",
-    location: "״§„…ˆ‚״¹",
-    products: "״§„…†״×״¬״§״×",
-    quantities: "״§„ƒ…״§״×",
-    total: "״§„…״¨„״÷",
-    payment: "״·״±‚״© ״§„״¯״¹",
-    paymentStatus: "״­״§„״© ״§„״¯״¹",
-    notes: "״§„…„״§״­״¸״§״×",
-    createdAt: "ˆ‚״× ״§„״¥†״´״§״¡",
-    preparedAt: "ˆ‚״× ״§„״¬״§‡״²״©",
-    pickedUpAt: "ˆ‚״× ״§„״§״³״×„״§…",
-    deliveredAt: "ˆ‚״× ״§„״×״³„…",
-    quickActions: "״£״²״±״§״± ״³״±״¹״©",
-    callStore: "״§״×״µ„ ״¨״§„…״­„",
-    callCustomer: "״§״×״µ„ ״¨״§„״²״¨ˆ†",
-    openStoreMap: "״§״×״­ …ˆ‚״¹ ״§„…״­„",
-    openCustomerMap: "״§״×״­ …ˆ‚״¹ ״§„״²״¨ˆ†",
-    receiveOrder: "״§״³״×„״§… ״§„״·„״¨",
-    startDelivery: "״¨״¯״¡ ״§„״×ˆ״µ„",
-    markDelivered: "״×… ״§„״×״³„…",
-    reportIssue: "…״´ƒ„״©  ״§„״·„״¨",
-    assignToEmployee: "״×״¹† „…ˆ״¸",
-    assign: "״×״¹†",
-    assignedTo: "״§„…ˆ״¸ ״§„…״¹‘†",
-    nextOrder: "״§„״·„״¨ ״§„״×״§„",
-    previousOrder: "״§„״·„״¨ ״§„״³״§״¨‚",
-    regionsBoard: "„ˆ״­״© ״§„…†״§״·‚",
-    ordersCount: "״¹״¯״¯ ״§„״·„״¨״§״×",
-    updateStatus: "״×״­״¯״« ״§„״­״§„״©",
-    employeeManagement: "״¥״¯״§״±״© …ˆ״¸ ״§„״×ˆ״µ„",
-    addEmployee: "״¥״¶״§״© …ˆ״¸",
-    editEmployee: "״×״¹״¯„ …ˆ״¸",
-    fullName: "״§„״§״³… ״§„ƒ״§…„",
-    employeePhone: "״±‚… ״§„…ˆ״¸",
-    employeeRegion: "…†״·‚״© ״§„…ˆ״¸",
-    cancelEdit: "״¥„״÷״§״¡",
-    disableEmployee: "״×״¹״·„",
-    enableEmployee: "״×״¹„",
-    deleteEmployee: "״­״°",
-    employeeOrders: "״·„״¨״§״× ״§„…ˆ״¸",
-    resetFilters: "״×״µ״± ״§„„״§״×״±",
-    invalidFlowAction: "״§„״­״§„״© ״§„״­״§„״© „״§ ״×״³…״­ ״¨‡״°‡ ״§„״¹…„״©.",
-    adminWorkspace: "„ˆ״­״© ״§„״¥״¯״§״±״©",
-    merchantPhoneHint: "״£״¯״®„ ״±‚… ‡״§״× ״§„״×״§״¬״±",
-    merchantPasswordHint: "ƒ„…״© …״±ˆ״± ״§„״×״§״¬״± (12 ״­״±‹״§ ״¹„‰ ״§„״£‚„)",
-    wrongMerchantCredentials: "״£״¯״®„ ״§„״¨״±״¯ ״§„״¥„ƒ״×״±ˆ† ˆƒ„…״© …״±ˆ״± ״§„״×״§״¬״±.",
+    shopOwner: "مسؤول المحل",
+    phoneLabel: "الهاتف",
+    address: "العنوان",
+    location: "الموقع",
+    products: "المنتجات",
+    quantities: "الكميات",
+    total: "المبلغ",
+    payment: "طريقة الدفع",
+    paymentStatus: "حالة الدفع",
+    notes: "الملاحظات",
+    createdAt: "وقت الإنشاء",
+    preparedAt: "وقت الجاهزية",
+    pickedUpAt: "وقت الاستلام",
+    deliveredAt: "وقت التسليم",
+    quickActions: "أزرار سريعة",
+    callStore: "اتصل بالمحل",
+    callCustomer: "اتصل بالزبون",
+    openStoreMap: "افتح موقع المحل",
+    openCustomerMap: "افتح موقع الزبون",
+    receiveOrder: "استلام الطلب",
+    startDelivery: "بدء التوصيل",
+    markDelivered: "تم التسليم",
+    reportIssue: "مشكلة في الطلب",
+    assignToEmployee: "تعيين لموظف",
+    assign: "تعيين",
+    assignedTo: "الموظف المعيّن",
+    nextOrder: "الطلب التالي",
+    previousOrder: "الطلب السابق",
+    regionsBoard: "لوحة المناطق",
+    ordersCount: "عدد الطلبات",
+    updateStatus: "تحديث الحالة",
+    employeeManagement: "إدارة موظفي التوصيل",
+    addEmployee: "إضافة موظف",
+    editEmployee: "تعديل موظف",
+    fullName: "الاسم الكامل",
+    employeePhone: "رقم الموظف",
+    employeeRegion: "منطقة الموظف",
+    cancelEdit: "إلغاء",
+    disableEmployee: "تعطيل",
+    enableEmployee: "تفعيل",
+    deleteEmployee: "حذف",
+    employeeOrders: "طلبات الموظف",
+    resetFilters: "تصفير الفلاتر",
+    invalidFlowAction: "الحالة الحالية لا تسمح بهذه العملية.",
+    adminWorkspace: "لوحة الإدارة",
+    merchantPhoneHint: "أدخل رقم هاتف التاجر",
+    merchantPasswordHint: "كلمة مرور التاجر (12 حرفًا على الأقل)",
+    wrongMerchantCredentials: "أدخل البريد الإلكتروني وكلمة مرور التاجر.",
   },
   en: {
     appTitle: "BAMORA Business",
@@ -1039,7 +1039,7 @@ function DeliveryWorkspace({
                               <div className={styles.orderHeader}>
                                 <div>
                                   <h3 className={styles.orderTitle}>{order.id}</h3>
-                                  <p className={styles.orderMeta}>{order.merchantName} ג€¢ {order.customerName}</p>
+                                  <p className={styles.orderMeta}>{order.merchantName} • {order.customerName}</p>
                                 </div>
                                 <span className={styles.badge}>{deliveryStatusLabel[language][order.status]}</span>
                               </div>
@@ -1062,7 +1062,7 @@ function DeliveryWorkspace({
                                 {order.items.map((item) => (
                                   <article key={`${order.id}-${item.title}`} className={styles.itemSummaryCard}>
                                     {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className={styles.itemSummaryImage} loading="lazy" /> : null}
-                                    <p className={styles.detailText}>{item.title} ֳ— {item.quantity} ג€¢ {item.size} ג€¢ {item.color}</p>
+                                    <p className={styles.detailText}>{item.title} × {item.quantity} • {item.size} • {item.color}</p>
                                   </article>
                                 ))}
                               </div>
@@ -1174,8 +1174,8 @@ function DeliveryWorkspace({
                 <header className={styles.detailSectionHeader}><h3>{text.orderSection}</h3></header>
                 <dl className={styles.detailList}>
                   <div><dt>{text.orderId}</dt><dd>{selectedOrder.id}</dd></div>
-                  <div><dt>{text.products}</dt><dd>{selectedOrder.items.map((item) => `${item.title} (${item.size} ג€¢ ${item.color})`).join(" ג€¢ ") || "-"}</dd></div>
-                  <div><dt>{text.quantities}</dt><dd>{selectedOrder.items.map((item) => `${item.quantity} ֳ— ${item.unitPrice}`).join(" ג€¢ ") || "-"}</dd></div>
+                  <div><dt>{text.products}</dt><dd>{selectedOrder.items.map((item) => `${item.title} (${item.size} • ${item.color})`).join(" • ") || "-"}</dd></div>
+                  <div><dt>{text.quantities}</dt><dd>{selectedOrder.items.map((item) => `${item.quantity} × ${item.unitPrice}`).join(" • ") || "-"}</dd></div>
                   <div><dt>{text.total}</dt><dd>{selectedOrder.total}</dd></div>
                   <div><dt>{text.payment}</dt><dd>{selectedOrder.paymentMethod}</dd></div>
                   <div><dt>{text.paymentStatus}</dt><dd>{selectedOrder.paymentStatus}</dd></div>
@@ -1398,7 +1398,7 @@ export default function BusinessPage() {
         try {
           await establishAdminApiSession(undefined, ADMIN_API_PASSWORD || undefined);
         } catch {
-          setNotice("״×… ״×״­ „ˆ״­״© ״§„״×ˆ״µ„. ״§„״·„״¨״§״× ״×״¸‡״± ״¨״¹״¯ ״±״¨״· ״¬„״³״© ״§„…״³״₪ˆ„ ״¨״§„״®״§״¯….");
+          setNotice("تم فتح لوحة التوصيل. الطلبات تظهر بعد ربط جلسة المسؤول بالخادم.");
         }
         return;
       }
@@ -1537,7 +1537,7 @@ export default function BusinessPage() {
               </button>
             </div>
             {notice ? <p className={styles.inlineNote}>{notice}</p> : null}
-            {accountType === "merchant" ? <a href={`https://wa.me/972548067553?text=${encodeURIComponent("…״±״­״¨‹״§״ ״£†״§ …‡״×… ״¨״§„״§†״¶…״§… ״¥„‰ BAMORA ƒ״×״§״¬״±. ״£״±״¯ …״¹״±״© ״×״§״µ„ ״§„״×״³״¬„")}`} target="_blank" rel="noreferrer">{language === "ar" ? "״×‚״¯… ״·„״¨ ״§†״¶…״§… ״×״§״¬״± ״¬״¯״¯" : "Apply as a new merchant"}</a> : null}
+            {accountType === "merchant" ? <a href={`https://wa.me/972548067553?text=${encodeURIComponent("مرحبًا، أنا مهتم بالانضمام إلى BAMORA كتاجر. أريد معرفة تفاصيل التسجيل")}`} target="_blank" rel="noreferrer">{language === "ar" ? "تقديم طلب انضمام تاجر جديد" : "Apply as a new merchant"}</a> : null}
           </section>
         </div>
       </div>
@@ -1590,7 +1590,7 @@ export default function BusinessPage() {
             <section className={styles.loginCard}>
               <h1>{text.deliveryTitle}</h1>
               <p role="status">{language === "ar"
-                ? "״¥״¯״§״±״© …ˆ״¸ ״§„״×ˆ״µ„ ˆ״§„״×״¹† ״§„…״­„ ״÷״± …״×״§״­״© ״¹„‰ ״§„״¥†״×״§״¬. „״²… ״×†״° ״µ„״§״­״§״× ״®״§״¯…״© ˆ״³״¬„ ״×״¹†״§״× ״¯״§״¦… ‚״¨„ ״§„״×״´״÷„. ״±״§״¬״¹ ״§„״·„״¨״§״× …† „ˆ״­״© ״§„…״³״₪ˆ„."
+                ? "إدارة موظفي التوصيل والتعيين المحلي غير متاحة على الإنتاج. يلزم تنفيذ صلاحيات خادمية وسجل تعيينات دائم قبل التشغيل. راجع الطلبات من لوحة المسؤول."
                 : "Local staff management and delivery assignments are unavailable in production. Server-authorized staff access and persistent assignments are required. Review orders in the admin dashboard."}</p>
             </section>
           ) : <DeliveryWorkspace language={language} isAdminView={true} onLogout={handleLogout} />}
