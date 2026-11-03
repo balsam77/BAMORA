@@ -652,17 +652,31 @@ export class CommerceRepository {
   }
 
   listCategories() {
-    return this.prisma.category.findMany({ orderBy: { sortOrder: "asc" } });
+    return this.prisma.category.findMany({ orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }] });
   }
 
-  upsertCategory(input: { id?: string; nameAr: string; slug: string; icon?: string; parentId?: string | null }) {
+  upsertCategory(input: {
+    id?: string;
+    nameAr: string;
+    nameEn?: string;
+    nameHe?: string;
+    slug: string;
+    icon?: string;
+    isActive?: boolean;
+    sortOrder?: number;
+    parentId?: string | null;
+  }) {
     if (input.id) {
       return this.prisma.category.update({
         where: { id: input.id },
         data: {
           nameAr: input.nameAr,
-          nameEn: input.nameAr,
+          nameEn: input.nameEn ?? input.nameAr,
+          nameHe: input.nameHe,
           slug: input.slug,
+          icon: input.icon,
+          isActive: input.isActive,
+          sortOrder: input.sortOrder,
           parentId: input.parentId ?? null,
         },
       });
@@ -671,15 +685,27 @@ export class CommerceRepository {
     return this.prisma.category.create({
       data: {
         nameAr: input.nameAr,
-        nameEn: input.nameAr,
+        nameEn: input.nameEn ?? input.nameAr,
+        nameHe: input.nameHe,
         slug: input.slug,
+        icon: input.icon ?? "🛍️",
+        isActive: input.isActive ?? true,
+        sortOrder: input.sortOrder ?? 0,
         parentId: input.parentId ?? null,
       },
     });
   }
 
-  deleteCategory(id: string) {
-    return this.prisma.category.deleteMany({ where: { id } });
+  async deleteCategory(id: string) {
+    const [productLinks, children] = await Promise.all([
+      this.prisma.productCategory.count({ where: { categoryId: id } }),
+      this.prisma.category.count({ where: { parentId: id } }),
+    ]);
+    if (productLinks > 0 || children > 0) {
+      return { count: 0, blocked: true, productLinks, children };
+    }
+    const result = await this.prisma.category.deleteMany({ where: { id } });
+    return { count: result.count, blocked: false, productLinks: 0, children: 0 };
   }
 
   listProductsForAdmin() {

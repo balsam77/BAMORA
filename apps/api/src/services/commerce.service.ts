@@ -1498,21 +1498,41 @@ export class CommerceService {
 
   async listPublicCategories() {
     const categories = await this.repository.listCategories();
-    return categories.map((category) => ({
-      id: category.id,
-      slug: category.slug,
-      titleAr: category.nameAr,
-      icon: "🛍️",
-      parentId: category.parentId,
-    }));
+    return categories
+      .filter((category) => category.isActive)
+      .map((category) => ({
+        id: category.id,
+        slug: category.slug,
+        titleAr: category.nameAr,
+        titleEn: category.nameEn,
+        titleHe: category.nameHe,
+        icon: category.icon,
+        parentId: category.parentId,
+        sortOrder: category.sortOrder,
+      }));
   }
 
-  upsertCategory(input: { id?: string; nameAr: string; slug: string; icon: string; parentId: string | null }) {
+  upsertCategory(input: {
+    id?: string;
+    nameAr: string;
+    nameEn?: string;
+    nameHe?: string;
+    slug: string;
+    icon: string;
+    isActive?: boolean;
+    sortOrder?: number;
+    parentId: string | null;
+  }) {
     return this.repository.upsertCategory(input);
   }
 
   async deleteCategory(id: string) {
     const result = await this.repository.deleteCategory(id);
+    if (result.blocked) {
+      throw new BadRequestException(
+        `لا يمكن حذف القسم: مرتبط بـ ${result.productLinks} منتج و ${result.children} قسم فرعي. انقل المنتجات والأقسام الفرعية أولًا.`,
+      );
+    }
     return result.count > 0;
   }
 

@@ -20,6 +20,7 @@ import { PrismaService } from "./prisma/prisma.service";
 import { AuthRepository } from "./repositories/auth.repository";
 import { CommerceRepository } from "./repositories/commerce.repository";
 import { CommerceService } from "./services/commerce.service";
+import { CategorySeedService } from "./services/category-seed.service";
 import { getJwtSecret } from "./common/deployment-config";
 import { startupStep } from "./common/startup-diagnostics";
 
@@ -52,6 +53,7 @@ import { startupStep } from "./common/startup-diagnostics";
     AuthService,
     CommerceRepository,
     CommerceService,
+    CategorySeedService,
     PaymentGatewayService,
     ManualPaymentProvider,
     PaypalPaymentProvider,

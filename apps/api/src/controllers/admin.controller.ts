@@ -2,11 +2,20 @@ import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/commo
 import { CurrentUser, type AuthenticatedUser } from "../common/current-user.decorator";
 import { Roles } from "../common/roles.decorator";
 import { CommerceService } from "../services/commerce.service";
+import { CategorySeedService } from "../services/category-seed.service";
 
 @Roles("super-admin")
 @Controller("api/admin")
 export class AdminController {
-  constructor(private readonly commerceService: CommerceService) {}
+  constructor(
+    private readonly commerceService: CommerceService,
+    private readonly categorySeedService: CategorySeedService,
+  ) {}
+
+  @Post("categories/seed")
+  seedCategories() {
+    return this.categorySeedService.seed();
+  }
 
   @Get("dashboard")
   dashboard() {
@@ -142,7 +151,17 @@ export class AdminController {
   }
 
   @Post("categories")
-  upsertCategory(@Body() body: { id?: string; nameAr: string; slug: string; icon: string; parentId: string | null }) {
+  upsertCategory(@Body() body: {
+    id?: string;
+    nameAr: string;
+    nameEn?: string;
+    nameHe?: string;
+    slug: string;
+    icon: string;
+    isActive?: boolean;
+    sortOrder?: number;
+    parentId: string | null;
+  }) {
     return this.commerceService.upsertCategory(body);
   }
 

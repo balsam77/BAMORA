@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "categories" ADD COLUMN IF NOT EXISTS "icon" TEXT NOT NULL DEFAULT '🛍️';
+ALTER TABLE "categories" ADD COLUMN IF NOT EXISTS "is_active" BOOLEAN NOT NULL DEFAULT true;

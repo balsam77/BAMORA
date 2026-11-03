@@ -72,7 +72,7 @@ test("migration history tolerates Windows line endings but never changed SQL or 
   const changed = migrationChecksums(Buffer.from(lf.replace("TEXT", "INTEGER")));
   assert.ok(changed.every(checksum => !migrationChecksums(Buffer.from(lf)).includes(checksum)));
   assert.deepEqual(expectedMigrations().map(migration => migration.name), [
-    "20261011000000_initial", "20261013120000_guest_checkout_consent",
+    "20261011000000_initial", "20261013120000_guest_checkout_consent", "20261103000000_category_icon_active",
   ]);
 });
 

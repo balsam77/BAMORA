@@ -3,27 +3,30 @@ import { getApiBaseUrl } from "@bamora/platform";
 export type DynamicCategory = {
   id: string;
   titleAr: string;
+  titleEn?: string;
+  titleHe?: string | null;
   icon: string;
   parentId?: string | null;
+  sortOrder?: number;
 };
 
 const STORAGE_KEY = "bamoraMerchantCategories";
 
 const defaultCategories: DynamicCategory[] = [
   { id: "women", titleAr: "نسائي", icon: "👗" },
-  { id: "dresses", titleAr: "فساتين", icon: "👗", parentId: "women" },
+  { id: "women-dresses", titleAr: "فساتين", icon: "👗", parentId: "women" },
   { id: "men", titleAr: "رجالي", icon: "🤵" },
-  { id: "kids", titleAr: "أطفال", icon: "🧒" },
-  { id: "accessories", titleAr: "إكسسوارات", icon: "👜" },
-  { id: "bags", titleAr: "حقائب", icon: "👜", parentId: "accessories" },
-  { id: "shoes", titleAr: "أحذية", icon: "👟", parentId: "accessories" },
-  { id: "glasses", titleAr: "نظارات", icon: "🕶️", parentId: "accessories" },
-  { id: "beauty", titleAr: "الجمال والعناية", icon: "💄" },
-  { id: "makeup", titleAr: "مكياج", icon: "💄", parentId: "beauty" },
-  { id: "perfumes", titleAr: "عطور", icon: "🧴", parentId: "beauty" },
-  { id: "home", titleAr: "منزلي", icon: "🏠" },
+  { id: "kids-babies", titleAr: "أطفال ومواليد", icon: "🧒" },
+  { id: "bags", titleAr: "حقائب", icon: "👜" },
+  { id: "shoes", titleAr: "أحذية", icon: "👟" },
+  { id: "accessories", titleAr: "إكسسوارات", icon: "💍" },
+  { id: "accessories-sunglasses", titleAr: "نظارات شمسية", icon: "🕶️", parentId: "accessories" },
+  { id: "beauty-care", titleAr: "مستحضرات تجميل وعناية", icon: "💄" },
+  { id: "beauty-makeup", titleAr: "مكياج", icon: "💄", parentId: "beauty-care" },
+  { id: "beauty-women-perfume", titleAr: "عطور نسائية", icon: "🧴", parentId: "beauty-care" },
+  { id: "home-kitchen", titleAr: "المنزل والمطبخ", icon: "🏠" },
   { id: "electronics", titleAr: "إلكترونيات", icon: "📱" },
-  { id: "sports", titleAr: "رياضة", icon: "🏃" },
+  { id: "sports-fitness", titleAr: "رياضة ولياقة", icon: "🏃" },
 ];
 
 function normalizeId(value: string, fallbackIndex: number) {
@@ -56,11 +59,17 @@ function sanitizeCategory(input: unknown, index: number): DynamicCategory | null
     return null;
   }
 
-  const idSource = typeof raw.id === "string"
-    ? raw.id
-    : typeof raw.slug === "string"
-      ? raw.slug
-      : titleAr;
+  const titleEn = typeof raw.titleEn === "string" ? raw.titleEn.trim()
+    : typeof raw.nameEn === "string" ? raw.nameEn.trim() : undefined;
+  const titleHe = typeof raw.titleHe === "string" ? raw.titleHe.trim()
+    : typeof raw.nameHe === "string" ? raw.nameHe.trim() : null;
+
+  // Keep the raw ID as-is so parent-child links from the API stay intact.
+  const idSource = typeof raw.id === "string" && raw.id.trim().length > 0
+    ? raw.id.trim()
+    : typeof raw.slug === "string" && raw.slug.trim().length > 0
+      ? raw.slug.trim()
+      : normalizeId(titleAr, index);
 
   const icon = typeof raw.icon === "string" && raw.icon.trim().length > 0
     ? raw.icon.trim()
@@ -75,14 +84,19 @@ function sanitizeCategory(input: unknown, index: number): DynamicCategory | null
           ? ((raw.parent as Record<string, unknown>).id as string)
           : null;
 
+  const sortOrder = typeof raw.sortOrder === "number" ? raw.sortOrder : undefined;
+
   return {
-    id: normalizeId(idSource, index),
+    id: idSource,
     titleAr,
+    titleEn,
+    titleHe,
     icon,
     parentId:
       typeof parentCandidate === "string" && parentCandidate.trim().length > 0
-        ? normalizeId(parentCandidate, index)
+        ? parentCandidate.trim()
         : null,
+    sortOrder,
   };
 }
 

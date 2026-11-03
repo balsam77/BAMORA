@@ -216,8 +216,12 @@ export type MerchantActivityRecord = {
 export type CategoryRecord = {
   id: string;
   nameAr: string;
+  nameEn?: string;
+  nameHe?: string | null;
   slug: string;
   icon: string;
+  isActive?: boolean;
+  sortOrder?: number;
   parentId: string | null;
 };
 
@@ -414,7 +418,16 @@ export async function getPublicProducts(query = ""): Promise<StorefrontProduct[]
   }));
 }
 
-export type CatalogCategory = { id: string; titleAr: string; parentId: string | null };
+export type CatalogCategory = {
+  id: string;
+  slug?: string;
+  titleAr: string;
+  titleEn?: string;
+  titleHe?: string | null;
+  icon?: string;
+  parentId: string | null;
+  sortOrder?: number;
+};
 
 export function getPublicCategories() {
   return apiRequest<CatalogCategory[]>("/api/catalog/categories", {}, { skipAuth: true });
@@ -2082,11 +2095,25 @@ function createApiAdminRepository(): AdminRepository {
     };
   };
 
-  const mapCategory = (category: { id: string; nameAr: string; slug: string; parentId?: string | null }): CategoryRecord => ({
+  const mapCategory = (category: {
+    id: string;
+    nameAr: string;
+    nameEn?: string;
+    nameHe?: string | null;
+    slug: string;
+    icon?: string;
+    isActive?: boolean;
+    sortOrder?: number;
+    parentId?: string | null;
+  }): CategoryRecord => ({
     id: category.id,
     nameAr: category.nameAr,
+    nameEn: category.nameEn,
+    nameHe: category.nameHe ?? null,
     slug: category.slug,
-    icon: "🛍️",
+    icon: category.icon ?? "🛍️",
+    isActive: category.isActive ?? true,
+    sortOrder: category.sortOrder ?? 0,
     parentId: category.parentId ?? null,
   });
 
@@ -2371,15 +2398,29 @@ function createApiAdminRepository(): AdminRepository {
       };
     },
     async upsertCategory(input) {
-      const payload = await apiRequest<{ id: string; nameAr: string; slug: string; parentId?: string | null }>(
+      const payload = await apiRequest<{
+        id: string;
+        nameAr: string;
+        nameEn?: string;
+        nameHe?: string | null;
+        slug: string;
+        icon?: string;
+        isActive?: boolean;
+        sortOrder?: number;
+        parentId?: string | null;
+      }>(
         platformApiContracts.admin.categories,
         {
           method: "POST",
           body: JSON.stringify({
             id: input.id,
             nameAr: input.nameAr,
+            nameEn: input.nameEn,
+            nameHe: input.nameHe,
             slug: input.slug,
             icon: input.icon,
+            isActive: input.isActive,
+            sortOrder: input.sortOrder,
             parentId: input.parentId,
           }),
         },

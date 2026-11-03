@@ -37,8 +37,12 @@ type AdminTab = "overview" | "merchants" | "products" | "orders" | "monitoring" 
 type CategoryFormState = {
   id: string;
   nameAr: string;
+  nameEn: string;
+  nameHe: string;
   slug: string;
   icon: string;
+  isActive: boolean;
+  sortOrder: string;
   parentId: string;
 };
 
@@ -106,8 +110,12 @@ const defaultStats: PlatformStats = {
 const emptyCategory: CategoryFormState = {
   id: "",
   nameAr: "",
+  nameEn: "",
+  nameHe: "",
   slug: "",
   icon: "",
+  isActive: true,
+  sortOrder: "0",
   parentId: "",
 };
 
@@ -350,8 +358,12 @@ function AdminPageContent() {
     setCategoryForm({
       id: category.id,
       nameAr: category.nameAr,
+      nameEn: category.nameEn ?? "",
+      nameHe: category.nameHe ?? "",
       slug: category.slug,
       icon: category.icon,
+      isActive: category.isActive ?? true,
+      sortOrder: String(category.sortOrder ?? 0),
       parentId: category.parentId ?? "",
     });
   };
@@ -366,8 +378,12 @@ function AdminPageContent() {
       await adminRepository.upsertCategory({
         id: categoryForm.id || undefined,
         nameAr: categoryForm.nameAr,
+        nameEn: categoryForm.nameEn || undefined,
+        nameHe: categoryForm.nameHe || null,
         slug: categoryForm.slug,
         icon: categoryForm.icon,
+        isActive: categoryForm.isActive,
+        sortOrder: Number(categoryForm.sortOrder) || 0,
         parentId: categoryForm.parentId || null,
       });
 
@@ -385,10 +401,14 @@ function AdminPageContent() {
       return;
     }
 
-    await adminRepository.deleteCategory(categoryForm.id);
-    setCategoryForm(emptyCategory);
-    await loadDashboard();
-    setPlatformNotice("تم حذف القسم.");
+    try {
+      await adminRepository.deleteCategory(categoryForm.id);
+      setCategoryForm(emptyCategory);
+      await loadDashboard();
+      setPlatformNotice("تم حذف القسم.");
+    } catch (error) {
+      setPlatformNotice(error instanceof Error ? error.message : "تعذر حذف القسم.");
+    }
   };
 
   if (!ready) {
@@ -914,14 +934,21 @@ function AdminPageContent() {
             <p>إضافة، تعديل أو حذف أي قسم في أي وقت.</p>
             <div className={styles.formGrid}>
               <input className={styles.inputField} type="text" placeholder="اسم القسم بالعربية" value={categoryForm.nameAr} onChange={(event) => setCategoryForm((current) => ({ ...current, nameAr: event.target.value }))} />
+              <input className={styles.inputField} type="text" placeholder="اسم القسم بالإنجليزية" value={categoryForm.nameEn} onChange={(event) => setCategoryForm((current) => ({ ...current, nameEn: event.target.value }))} />
+              <input className={styles.inputField} type="text" placeholder="اسم القسم بالعبرية" value={categoryForm.nameHe} onChange={(event) => setCategoryForm((current) => ({ ...current, nameHe: event.target.value }))} />
               <input className={styles.inputField} type="text" placeholder="Category slug" value={categoryForm.slug} onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))} />
               <input className={styles.inputField} type="text" placeholder="الأيقونة (Emoji)" value={categoryForm.icon} onChange={(event) => setCategoryForm((current) => ({ ...current, icon: event.target.value }))} />
+              <input className={styles.inputField} type="number" min={0} step={1} placeholder="الترتيب" value={categoryForm.sortOrder} onChange={(event) => setCategoryForm((current) => ({ ...current, sortOrder: event.target.value }))} />
               <select aria-label="القسم الرئيسي (اختياري)" className={styles.inputField} value={categoryForm.parentId} onChange={(event) => setCategoryForm((current) => ({ ...current, parentId: event.target.value }))}>
                 <option value="">قسم رئيسي (بدون أب)</option>
                 {categories.filter((category) => !category.parentId && category.id !== categoryForm.id).map((category) => (
                   <option key={category.id} value={category.id}>{category.icon} {category.nameAr}</option>
                 ))}
               </select>
+              <label className={styles.inlineNote} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <input type="checkbox" checked={categoryForm.isActive} onChange={(event) => setCategoryForm((current) => ({ ...current, isActive: event.target.checked }))} />
+                قسم مفعّل (يظهر للعملاء والتجار)
+              </label>
             </div>
             <div className={styles.actionRow}>
               <button type="button" className={styles.primaryButton} onClick={saveCategory}>إضافة/حفظ قسم</button>
@@ -935,7 +962,9 @@ function AdminPageContent() {
                   <tr>
                     <th>الاسم</th>
                     <th>Slug</th>
-                    <th>Parent</th>
+                    <th>القسم الأب</th>
+                    <th>الترتيب</th>
+                    <th>الحالة</th>
                     <th>إجراء</th>
                   </tr>
                 </thead>
@@ -945,6 +974,8 @@ function AdminPageContent() {
                       <td>{category.icon} {category.nameAr}</td>
                       <td>{category.slug}</td>
                       <td>{category.parentId ? (categories.find((parent) => parent.id === category.parentId)?.nameAr ?? category.parentId) : "-"}</td>
+                      <td>{category.sortOrder ?? 0}</td>
+                      <td>{(category.isActive ?? true) ? "مفعّل" : "معطّل"}</td>
                       <td className={styles.actionsCell}>
                         <button type="button" className={styles.tableButton} onClick={() => editCategory(category)}>تحميل للتعديل</button>
                       </td>

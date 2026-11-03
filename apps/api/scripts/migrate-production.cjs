@@ -70,9 +70,13 @@ function expectedMigrations() {
       name: entry.name,
       checksums: migrationChecksums(fs.readFileSync(path.join(root, entry.name, "migration.sql"))),
     }));
-  if (migrations.length !== 2 ||
-      migrations[0].name !== "20261011000000_initial" ||
-      migrations[1].name !== "20261013120000_guest_checkout_consent") {
+  const allowed = [
+    "20261011000000_initial",
+    "20261013120000_guest_checkout_consent",
+    "20261103000000_category_icon_active",
+  ];
+  if (migrations.length < 2 || migrations.length > allowed.length ||
+      migrations.some((migration, index) => migration.name !== allowed[index])) {
     fail("UNEXPECTED_INITIAL_MIGRATION_SET");
   }
   return migrations;

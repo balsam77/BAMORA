@@ -197,7 +197,15 @@ function resolveMainCategoryIdFromProductCategory(
   return directMain?.id ?? null;
 }
 
-function getLocalizedCategoryLabel(category: Pick<DynamicCategory, "id" | "titleAr">, language: AppLanguage) {
+function getLocalizedCategoryLabel(category: Pick<DynamicCategory, "id" | "titleAr" | "titleEn" | "titleHe">, language: AppLanguage) {
+  // Prefer API-provided translations when available.
+  if (language === "en" && category.titleEn) {
+    return category.titleEn;
+  }
+  if (language === "he" && category.titleHe) {
+    return category.titleHe;
+  }
+
   const key = normalizeCategoryKey(category.id);
   const titleKey = normalizeCategoryKey(category.titleAr);
   const dictionary: Record<string, { en: string; he: string }> = {
