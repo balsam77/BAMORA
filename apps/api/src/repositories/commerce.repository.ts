@@ -1,6 +1,18 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+﻿import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+
+const safeUserSelect = {
+  id: true,
+  email: true,
+  phone: true,
+  role: true,
+  status: true,
+  locale: true,
+  avatarUrl: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 @Injectable()
 export class CommerceRepository {
@@ -33,14 +45,14 @@ export class CommerceRepository {
   }
 
   findMerchantByUserId(userId: string) {
-    return this.prisma.merchant.findUnique({ where: { userId }, include: { user: true, plan: true } });
+    return this.prisma.merchant.findUnique({ where: { userId }, include: { user: { select: safeUserSelect }, plan: true } });
   }
 
   customerDashboard(customerId: string) {
     return this.prisma.customer.findUnique({
       where: { id: customerId },
       include: {
-        user: true,
+        user: { select: safeUserSelect },
         addresses: {
           include: {
             shippingZone: true,
@@ -179,7 +191,7 @@ export class CommerceRepository {
       create: {
         code: "IL",
         nameEn: "Center",
-        nameAr: "الوسط",
+        nameAr: "״§„ˆ״³״·",
         baseRate: new Prisma.Decimal(10),
         etaDaysMin: 1,
         etaDaysMax: 2,
@@ -343,7 +355,7 @@ export class CommerceRepository {
             include: {
               customer: {
                 include: {
-                  user: true,
+                  user: { select: safeUserSelect },
                 },
               },
             },
@@ -394,7 +406,7 @@ export class CommerceRepository {
           include: {
             customer: {
               include: {
-                user: true,
+                user: { select: safeUserSelect },
               },
             },
             items: {
@@ -475,7 +487,7 @@ export class CommerceRepository {
             include: {
               customer: {
                 include: {
-                  user: true,
+                  user: { select: safeUserSelect },
                 },
               },
             },
@@ -543,7 +555,7 @@ export class CommerceRepository {
     return this.prisma.order
       .findMany({
         include: {
-          customer: { include: { user: true } },
+          customer: { include: { user: { select: safeUserSelect } } },
           items: {
             include: {
               variant: {
@@ -553,7 +565,7 @@ export class CommerceRepository {
                       images: true,
                       merchant: {
                         include: {
-                          user: true,
+                          user: { select: safeUserSelect },
                         },
                       },
                     },
@@ -568,7 +580,7 @@ export class CommerceRepository {
             include: {
               merchant: {
                 include: {
-                  user: true,
+                  user: { select: safeUserSelect },
                 },
               },
               items: {
@@ -590,7 +602,7 @@ export class CommerceRepository {
 
         const legacyOrders = await this.prisma.order.findMany({
           include: {
-            customer: { include: { user: true } },
+            customer: { include: { user: { select: safeUserSelect } } },
             items: {
               include: {
                 variant: {
@@ -600,7 +612,7 @@ export class CommerceRepository {
                         images: true,
                         merchant: {
                           include: {
-                            user: true,
+                            user: { select: safeUserSelect },
                           },
                         },
                       },
@@ -622,7 +634,19 @@ export class CommerceRepository {
   listMerchants() {
     return this.prisma.merchant.findMany({
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            role: true,
+            status: true,
+            locale: true,
+            avatarUrl: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
         plan: true,
         merchantSubOrders: true,
       },
@@ -638,13 +662,16 @@ export class CommerceRepository {
         approvedAt: status === "ACTIVE" ? new Date() : null,
       },
       include: {
-        user: true,
+        user: { select: safeUserSelect },
       },
     });
   }
 
   listUsers() {
-    return this.prisma.user.findMany({ orderBy: { createdAt: "desc" } });
+    return this.prisma.user.findMany({
+      select: safeUserSelect,
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   updateUserStatus(id: string, status: "ACTIVE" | "SUSPENDED") {
@@ -688,7 +715,7 @@ export class CommerceRepository {
         nameEn: input.nameEn ?? input.nameAr,
         nameHe: input.nameHe,
         slug: input.slug,
-        icon: input.icon ?? "🛍️",
+        icon: input.icon ?? "נ›ן¸",
         isActive: input.isActive ?? true,
         sortOrder: input.sortOrder ?? 0,
         parentId: input.parentId ?? null,
@@ -1143,7 +1170,7 @@ export class CommerceRepository {
     return this.prisma.merchantPlan
       .findMany({
         where: { approvalStatus: "PENDING_PLAN_APPROVAL" },
-        include: { merchant: { include: { user: true } } },
+        include: { merchant: { include: { user: { select: safeUserSelect } } } },
         orderBy: { requestedAt: "asc" },
       })
       .catch((error) => {
@@ -1184,7 +1211,7 @@ export class CommerceRepository {
 
   listBamoraCharges() {
     return this.prisma.merchantBamoraCharge.findMany({
-      include: { merchant: { include: { user: true } }, order: true, subOrder: true },
+      include: { merchant: { include: { user: { select: safeUserSelect } } }, order: true, subOrder: true },
       orderBy: { createdAt: "desc" },
     });
   }
@@ -1235,7 +1262,7 @@ export class CommerceRepository {
         delayedAt: null,
         status: { in: ["PENDING", "CONFIRMED", "PACKED"] },
       },
-      include: { merchant: { include: { user: true } }, order: true },
+      include: { merchant: { include: { user: { select: safeUserSelect } } }, order: true },
     });
   }
 
@@ -1273,7 +1300,7 @@ export class CommerceRepository {
   listAdminAlerts(limit = 200) {
     return this.prisma.adminAlert.findMany({
       where: { resolvedAt: null },
-      include: { merchant: { include: { user: true } }, order: true },
+      include: { merchant: { include: { user: { select: safeUserSelect } } }, order: true },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
@@ -1317,7 +1344,7 @@ export class CommerceRepository {
     return this.prisma.merchantActivityLog
       .findMany({
         where: merchantId ? { merchantId } : undefined,
-        include: { merchant: { include: { user: true } } },
+        include: { merchant: { include: { user: { select: safeUserSelect } } } },
         orderBy: { createdAt: "desc" },
         take: 500,
       })

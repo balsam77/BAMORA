@@ -188,7 +188,19 @@ export class AuthRepository {
         approvedAt: data.approvedAt,
       },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            role: true,
+            status: true,
+            locale: true,
+            avatarUrl: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     });
   }
