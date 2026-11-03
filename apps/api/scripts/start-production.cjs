@@ -16,7 +16,22 @@ function initializationEnabled(env) {
 }
 
 async function start(env = process.env, initialize = migrate, launch = spawn) {
-  if (initializationEnabled(env)) await initialize(["--initialize"]);
+  if (initializationEnabled(env)) {
+    await initialize(["--initialize"]);
+  } else if (env.NODE_ENV === "production" && env.DATABASE_URL) {
+    // Apply any pending migrations (e.g. new columns) before starting.
+    // This is safe: migrate deploy only applies unapplied migrations.
+    const { spawnSync } = require("node:child_process");
+    const cli = require.resolve("prisma/build/index.js");
+    const result = spawnSync(process.execPath, [cli, "migrate", "deploy", "--schema", path.join(__dirname, "../prisma/schema.prisma")], {
+      env: { ...env, NODE_ENV: "production" },
+      encoding: "utf8",
+      timeout: 60000,
+    });
+    if (result.error || result.status !== 0) {
+      console.error("Migration deploy failed; starting anyway (schema may be behind).");
+    }
+  }
   const child = launch(process.execPath, [path.join(__dirname, "../dist/main.js")], {
     stdio: "inherit", env,
   });
