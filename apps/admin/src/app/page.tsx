@@ -563,8 +563,10 @@ function AdminPageContent() {
               <table className={styles.table}>
                 <thead>
                   <tr>
+                    <th>الصورة</th>
                     <th>المنتج</th>
                     <th>التاجر</th>
+                    <th>القسم</th>
                     <th>المخزون</th>
                     <th>السعر</th>
                     <th>إجراءات</th>
@@ -573,8 +575,16 @@ function AdminPageContent() {
                 <tbody>
                   {products.map((product) => (
                     <tr key={product.id}>
+                      <td>
+                        {product.imageUrl ? (
+                          <img src={product.imageUrl} alt={product.name} style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 8 }} loading="lazy" />
+                        ) : (
+                          <span style={{ display: "inline-block", width: 48, height: 48, borderRadius: 8, background: "#222", textAlign: "center", lineHeight: "48px", fontSize: 20 }}>📦</span>
+                        )}
+                      </td>
                       <td><strong>{product.name}</strong><span>{product.id}</span></td>
                       <td>{product.merchant}</td>
+                      <td>{product.category ?? "-"}</td>
                       <td>{product.stock}</td>
                       <td>{product.price}</td>
                       <td className={styles.actionsCell}>

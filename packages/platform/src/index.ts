@@ -131,6 +131,8 @@ export type AdminProductRecord = {
   name: string;
   stock: number;
   price: string;
+  imageUrl?: string;
+  category?: string;
 };
 
 export type AdminOrderItemRecord = {
@@ -2007,14 +2009,18 @@ function createApiAdminRepository(): AdminRepository {
   const mapAdminProduct = (product: {
     id: string;
     titleAr: string;
-    merchant?: { user?: { email: string } };
+    merchant?: { user?: { email: string }; businessName?: string };
     variants: Array<{ price: string | number; inventory?: { quantity: number } | null }>;
+    images?: Array<{ url: string }>;
+    categories?: Array<{ category?: { nameAr?: string } }>;
   }): AdminProductRecord => ({
     id: product.id,
-    merchant: product.merchant?.user?.email ?? "-",
+    merchant: product.merchant?.businessName ?? product.merchant?.user?.email ?? "-",
     name: product.titleAr,
     stock: product.variants.reduce((sum, variant) => sum + (variant.inventory?.quantity ?? 0), 0),
     price: formatIls(product.variants[0]?.price ?? 0),
+    imageUrl: product.images?.[0]?.url,
+    category: product.categories?.[0]?.category?.nameAr,
   });
 
   const mapAdminOrder = (order: {
